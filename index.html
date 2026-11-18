@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lern Mehr</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="theme-color" content="#4f6df5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Lern Mehr">
+<style>
+:root{
+  --bg:#f5f6fa; --card:#fff; --text:#1d2433; --muted:#6b7385; --line:#e3e6ee;
+  --accent:#4f6df5; --accent-text:#fff; --ok:#1f9d63; --warn:#d9822b; --danger:#d64545; --free:#e9ebf2;
+  --radius:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#12151d; --card:#1b1f2b; --text:#e8ebf3; --muted:#9097a8; --line:#2b3040;
+    --accent:#7088ff; --accent-text:#0b0e17; --ok:#3ac183; --warn:#e8a050; --danger:#ef6b6b; --free:#252a39; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-bottom:80px}
+main{max-width:860px;margin:0 auto;padding:20px 16px}
+h1{font-size:1.5rem;margin:0 0 4px} h2{font-size:1.1rem;margin:0 0 12px}
+.muted{color:var(--muted)} .small{font-size:.85rem}
+nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:center;gap:4px;padding:8px;z-index:10}
+nav button{flex:1;max-width:200px;border:0;background:none;color:var(--muted);padding:10px 8px;border-radius:10px;font:inherit;font-weight:600;cursor:pointer}
+nav button.active{background:var(--accent);color:var(--accent-text)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+label.f{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:.9rem}
+input,textarea,select{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 10px;width:100%}
+textarea{min-height:130px;resize:vertical}
+button.btn{font:inherit;font-weight:600;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:10px;padding:9px 14px;cursor:pointer}
+button.btn.primary{background:var(--accent);color:var(--accent-text);border-color:var(--accent)}
+button.btn.danger{color:var(--danger)}
+.bar{height:10px;background:var(--free);border-radius:99px;overflow:hidden}
+.bar>div{height:100%;background:var(--ok);transition:width .3s}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+.stat{flex:1;min-width:110px;background:var(--bg);border-radius:12px;padding:10px 12px}
+.stat b{display:block;font-size:1.3rem}
+.task{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;border-left:6px solid var(--c,var(--accent))}
+.task input{width:22px;height:22px;flex:none;accent-color:var(--ok)}
+.task .t{flex:1;min-width:0}
+.task .t div:first-child{font-weight:600}
+.task.done .t div:first-child{text-decoration:line-through;color:var(--muted)}
+.tag{font-size:.75rem;padding:2px 8px;border-radius:99px;background:var(--free);color:var(--muted);white-space:nowrap}
+.tag.over{background:var(--warn);color:#fff}
+.notice{padding:12px 14px;border-radius:12px;background:color-mix(in srgb,var(--warn) 18%,var(--card));border:1px solid var(--warn);margin-bottom:16px}
+.notice.ok{background:color-mix(in srgb,var(--ok) 15%,var(--card));border-color:var(--ok)}
+.cal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal .dow{text-align:center;font-size:.75rem;color:var(--muted);font-weight:600;padding:4px 0}
+.day{min-height:78px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:4px;cursor:pointer;overflow:hidden;font-size:.7rem;text-align:left;color:var(--text);font-family:inherit}
+.day.out{opacity:.35;cursor:default}
+.day.free{background:var(--free);}
+.day.today{outline:2px solid var(--accent)}
+.day.sel{outline:2px solid var(--text)}
+.day.exam{background:color-mix(in srgb,var(--danger) 20%,var(--bg));border-color:var(--danger)}
+.day .n{font-weight:700;font-size:.8rem;display:block;margin-bottom:2px}
+.chip{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:4px;padding:1px 4px;margin-bottom:2px;background:color-mix(in srgb,var(--c) 28%,transparent);border-left:3px solid var(--c)}
+.chip.d{opacity:.5;text-decoration:line-through}
+@media(max-width:560px){.day{min-height:56px;padding:2px}.chip{font-size:0;height:6px;padding:0}.day .m{display:none}}
+.topic{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.topic input[type=number]{width:84px;flex:none}
+.empty{text-align:center;padding:30px 10px}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<nav>
+  <button data-p="today">Heute</button>
+  <button data-p="cal">Kalender</button>
+  <button data-p="set">Einstellungen</button>
+</nav>
+
+<script>
+/* ---------- Zustand ---------- */
+const KEY = 'lernmehr-v1';
+const defaults = { examDate:'', repeats:2, minutes:120, topics:[], freeDays:[], done:{} };
+let S = load();
+let page = 'today';
+let calMonth = new Date(); calMonth.setDate(1);
+let selDay = null;
+
+function load(){ try{ return Object.assign({}, defaults, JSON.parse(localStorage.getItem(KEY)||'{}')); }catch(e){ return {...defaults}; } }
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+
+/* ---------- Datum-Helfer ---------- */
+const pad = n => String(n).padStart(2,'0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parse = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y,m-1,d,12); };
+const addDays = (s,n) => { const d = parse(s); d.setDate(d.getDate()+n); return iso(d); };
+const todayIso = () => iso(new Date());
+const diffDays = (a,b) => Math.round((parse(b)-parse(a))/864e5);
+const fmt = (s,o) => parse(s).toLocaleDateString('de-DE',o);
+const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const hue = id => { let h=0; for(const c of String(id)) h=(h*31+c.charCodeAt(0))%360; return `hsl(${h} 65% 55%)`; };
+const fmtMin = m => m>=60 ? `${Math.floor(m/60)} h${m%60?` ${m%60} min`:''}` : `${m} min`;
+
+/* ---------- Planung ---------- */
+function roundLabel(r){ return r===0 ? 'Lernen' : `Wiederholung ${r}`; }
+
+function allSessions(){
+  const budget = Math.max(15, +S.minutes||60), list = [];
+  for(let r=0;r<=S.repeats;r++){
+    for(const t of S.topics){
+      const total = r===0 ? t.min : Math.max(10, Math.round(t.min*0.5/5)*5);
+      const parts = Math.ceil(total/budget);
+      for(let p=0;p<parts;p++){
+        const m = p<parts-1 ? budget : total-budget*(parts-1);
+        list.push({ key:`${t.id}:${r}:${p}`, topicId:t.id, name:t.name, round:r, part:p, parts, min:m });
+      }
+    }
+  }
+  return list;
+}
+
+function computePlan(){
+  const today = todayIso(), budget = Math.max(15, +S.minutes||60);
+  const sessions = allSessions();
+  const byKey = Object.fromEntries(sessions.map(s=>[s.key,s]));
+  const days = {};           // iso -> Task[]
+  const add = (d,t)=>{ (days[d] ||= []).push(t); };
+
+  // erledigte Aufgaben liegen an ihrem Erledigt-Datum
+  let doneToday = 0;
+  for(const [k,d] of Object.entries(S.done)){
+    const s = byKey[k]; if(!s) continue;
+    add(d,{...s,done:true});
+    if(d===today) doneToday += s.min;
+  }
+  const pending = sessions.filter(s=>!S.done[s.key]);
+  const info = { pendingMin: pending.reduce((a,s)=>a+s.min,0), capacity:0, overflow:0, availDays:0, unscheduled:0 };
+
+  const avail = [];
+  if(S.examDate){
+    for(let d=today; diffDays(d,S.examDate)>0; d=addDays(d,1)) if(!S.freeDays.includes(d)) avail.push(d);
+  }
+  info.availDays = avail.length;
+  info.capacity = avail.reduce((a,d)=>a+(d===today?Math.max(0,budget-doneToday):budget),0);
+
+  const run = spread => {
+    const q = pending.slice(), out = {};
+    let rest = info.pendingMin;
+    avail.forEach((d,i)=>{
+      const cap = d===today ? Math.max(0,budget-doneToday) : budget;
+      const daysLeft = avail.length-i;
+      const target = spread ? Math.min(cap, Math.ceil(rest/daysLeft)) : cap;
+      let used = 0;
+      while(q.length){
+        const s = q[0];
+        const fits = used===0 ? s.min<=cap : used+s.min <= Math.min(cap, target+10);
+        if(!fits) break;
+        (out[d] ||= []).push({...s,done:false}); used+=s.min; rest-=s.min; q.shift();
+      }
+    });
+    return {out,left:q};
+  };
+  let res = run(true);
+  if(res.left.length) res = run(false);
+  for(const [d,ts] of Object.entries(res.out)) ts.forEach(t=>add(d,t));
+  if(res.left.length){
+    info.overflow = res.left.reduce((a,s)=>a+s.min,0);
+    const last = avail[avail.length-1];
+    if(last) res.left.forEach(s=>add(last,{...s,done:false,over:true}));
+    else info.unscheduled = res.left.length;
+  }
+  return {days,info};
+}
+
+/* ---------- Rendering ---------- */
+const app = document.getElementById('app');
+
+function render(){
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.p===page));
+  const plan = computePlan();
+  app.innerHTML = page==='today' ? viewToday(plan) : page==='cal' ? viewCal(plan) : viewSettings();
+  window.scrollTo(0,0 + (page==='cal'?window.scrollY:0));
+}
+
+function ready(){ return S.examDate && S.topics.length; }
+
+function setupHint(){
+  return `<div class="card empty"><h2>Noch kein Lernplan</h2>
+    <p class="muted">Lege in den Einstellungen Prüfungsdatum, Wiederholungen, Lernzeit und deine Themen fest.</p>
+    <button class="btn primary" onclick="go('set')">Zu den Einstellungen</button></div>`;
+}
+
+function taskHtml(t,editable=true){
+  const sub = `${roundLabel(t.round)}${t.parts>1?` · Teil ${t.part+1}/${t.parts}`:''} · ${fmtMin(t.min)}`;
+  return `<label class="task ${t.done?'done':''}" style="--c:${hue(t.topicId)}">
+    ${editable?`<input type="checkbox" ${t.done?'checked':''} onchange="toggleDone('${t.key}')">`:''}
+    <div class="t"><div>${esc(t.name)}</div><div class="small muted">${sub}</div></div>
+    ${t.over?'<span class="tag over">Zu wenig Zeit</span>':''}
+  </label>`;
+}
+
+function viewToday(plan){
+  if(!ready()) return `<h1>Heute</h1>${setupHint()}`;
+  const today = todayIso(), {info} = plan;
+  const daysLeft = diffDays(today,S.examDate);
+  const all = allSessions(), totalMin = all.reduce((a,s)=>a+s.min,0);
+  const doneMin = all.filter(s=>S.done[s.key]).reduce((a,s)=>a+s.min,0);
+  const pct = totalMin ? Math.round(doneMin/totalMin*100) : 0;
+  const tasks = plan.days[today] || [];
+  const isFree = S.freeDays.includes(today);
+  const todayMin = tasks.reduce((a,t)=>a+t.min,0), todayDone = tasks.filter(t=>t.done).reduce((a,t)=>a+t.min,0);
+
+  let body;
+  if(daysLeft<=0) body = `<div class="card empty"><h2>${daysLeft===0?'Heute ist die Prüfung – viel Erfolg! 🍀':'Die Prüfung ist vorbei.'}</h2></div>`;
+  else if(isFree) body = `<div class="card empty"><h2>Heute ist lernfrei 🎉</h2><p class="muted">Der Plan wurde auf die übrigen Tage verteilt.</p>
+    <button class="btn" onclick="toggleFree('${today}')">Lernfrei aufheben</button></div>`;
+  else if(!tasks.length) body = `<div class="card empty"><h2>Für heute ist nichts geplant ✅</h2><p class="muted">${info.pendingMin?'Die nächsten Aufgaben findest du im Kalender.':'Du hast alles geschafft!'}</p></div>`;
+  else body = `<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:10px">
+      <h2 style="margin:0">Heute zu erledigen</h2><span class="muted small">${fmtMin(todayDone)} / ${fmtMin(todayMin)}</span></div>
+      ${tasks.map(t=>taskHtml(t)).join('')}
+      <button class="btn" style="margin-top:6px" onclick="toggleFree('${today}')">Heute lernfrei machen</button></div>`;
+
+  return `<h1>Heute</h1><p class="muted">${fmt(today,{weekday:'long',day:'numeric',month:'long'})}</p>
+    ${warnHtml(info)}
+    <div class="card"><div class="stats">
+      <div class="stat"><b>${Math.max(daysLeft,0)}</b><span class="small muted">Tage bis zur Prüfung</span></div>
+      <div class="stat"><b>${pct}%</b><span class="small muted">geschafft</span></div>
+      <div class="stat"><b>${fmtMin(info.pendingMin)}</b><span class="small muted">noch offen</span></div></div>
+      <div class="bar"><div style="width:${pct}%"></div></div></div>
+    ${body}`;
+}
+
+function warnHtml(info){
+  if(info.overflow || info.unscheduled){
+    const miss = info.overflow || 0;
+    return `<div class="notice"><b>Der Plan ist zu voll.</b> ${info.availDays?`Dir fehlen ca. ${fmtMin(miss)}. Erhöhe die Lernzeit pro Tag, reduziere Wiederholungen oder streiche Lernfrei-Tage.`:'Es gibt keinen freien Lerntag mehr vor der Prüfung.'}</div>`;
+  }
+  return '';
+}
+
+function viewCal(plan){
+  if(!ready()) return `<h1>Kalender</h1>${setupHint()}`;
+  const y = calMonth.getFullYear(), m = calMonth.getMonth(), today = todayIso();
+  const first = new Date(y,m,1,12), offset = (first.getDay()+6)%7, nDays = new Date(y,m+1,0).getDate();
+  let cells = ['Mo','Di','Mi','Do','Fr','Sa','So'].map(d=>`<div class="dow">${d}</div>`).join('');
+  for(let i=0;i<offset;i++) cells += '<div></div>';
+  for(let d=1; d<=nDays; d++){
+    const s = `${y}-${pad(m+1)}-${pad(d)}`;
+    const tasks = plan.days[s] || [], free = S.freeDays.includes(s), isExam = s===S.examDate;
+    const mins = tasks.reduce((a,t)=>a+t.min,0);
+    const chips = tasks.slice(0,3).map(t=>`<span class="chip ${t.done?'d':''}" style="--c:${hue(t.topicId)}">${esc(t.name)}</span>`).join('') + (tasks.length>3?`<span class="muted">+${tasks.length-3}</span>`:'');
+    cells += `<button class="day ${free?'free':''} ${s===today?'today':''} ${s===selDay?'sel':''} ${isExam?'exam':''}" onclick="selectDay('${s}')">
+      <span class="n">${d}</span>${isExam?'<span class="chip" style="--c:var(--danger)">Prüfung</span>':free?'<span class="muted">frei</span>':chips}
+      ${mins&&!free?`<span class="muted m">${fmtMin(mins)}</span>`:''}</button>`;
+  }
+  const title = calMonth.toLocaleDateString('de-DE',{month:'long',year:'numeric'});
+  return `<h1>Kalender</h1>${warnHtml(plan.info)}
+    <div class="card"><div class="cal-head"><button class="btn" onclick="moveMonth(-1)">‹</button><b>${title}</b><button class="btn" onclick="moveMonth(1)">›</button></div>
+    <div class="cal">${cells}</div></div>${dayDetail(plan)}`;
+}
+
+function dayDetail(plan){
+  if(!selDay) return '<p class="muted small" style="text-align:center">Tippe auf einen Tag für Details oder um ihn lernfrei zu markieren.</p>';
+  const today = todayIso(), tasks = plan.days[selDay] || [], free = S.freeDays.includes(selDay);
+  const isExam = selDay===S.examDate, canToggle = !isExam && selDay>=today && selDay<S.examDate;
+  return `<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">${fmt(selDay,{weekday:'long',day:'numeric',month:'long'})}</h2>
+    ${canToggle?`<button class="btn ${free?'':'danger'}" onclick="toggleFree('${selDay}')">${free?'Lernfrei aufheben':'Lernfrei machen'}</button>`:''}</div>
+    ${isExam?'<p>Prüfungstag 🍀</p>':free?'<p class="muted">Lernfreier Tag – keine Aufgaben.</p>':tasks.length?tasks.map(t=>taskHtml(t,selDay<=today)).join(''):'<p class="muted">Keine Aufgaben an diesem Tag.</p>'}</div>`;
+}
+
+function viewSettings(){
+  const today = todayIso();
+  const days = S.examDate ? diffDays(today,S.examDate) : null;
+  return `<h1>Einstellungen</h1><p class="muted">Der Plan passt sich bei jeder Änderung automatisch an.</p>
+  <div class="card"><h2>Lernplan</h2><div class="grid">
+    <label class="f">Prüfungsdatum<input type="date" min="${addDays(today,1)}" value="${S.examDate}" onchange="setField('examDate',this.value)">
+      ${days!==null?`<span class="small muted">${days>0?`noch ${days} Tage`:'bereits vorbei / heute'}</span>`:''}</label>
+    <label class="f">Wiederholungen pro Thema
+      <select onchange="setField('repeats',+this.value)">${[0,1,2,3,4,5].map(n=>`<option value="${n}" ${S.repeats===n?'selected':''}>${n===0?'keine':n+'×'}</option>`).join('')}</select>
+      <span class="small muted">zusätzlich zum ersten Lernen</span></label>
+    <label class="f">Lernzeit pro Tag (Minuten)
+      <input type="number" min="15" step="15" value="${S.minutes}" onchange="setField('minutes',Math.max(15,+this.value||60))"></label>
+  </div></div>
+
+  <div class="card"><h2>Themen (${S.topics.length})</h2>
+    ${S.topics.map(t=>`<div class="topic"><input value="${esc(t.name)}" onchange="editTopic('${t.id}','name',this.value)">
+      <input type="number" min="10" step="5" value="${t.min}" title="Minuten" onchange="editTopic('${t.id}','min',+this.value)"><span class="small muted">min</span>
+      <button class="btn danger" onclick="delTopic('${t.id}')" aria-label="Löschen">✕</button></div>`).join('') || '<p class="muted">Noch keine Themen.</p>'}
+    <h2 style="margin-top:18px">Themen einfügen</h2>
+    <p class="small muted">Füge deinen Lernzettel ein – ein Thema pro Zeile. Optional mit Dauer: <code>Zellatmung; 60</code>. Aufzählungszeichen, Nummern und Markdown-Überschriften (#) werden entfernt. Standard: 45 min.</p>
+    <textarea id="paste" placeholder="Zellatmung; 60&#10;Photosynthese&#10;Genetik; 90"></textarea>
+    <div class="row" style="margin-top:8px"><button class="btn primary" onclick="importTopics()">Hinzufügen</button>
+    ${S.topics.length?'<button class="btn danger" onclick="clearTopics()">Alle Themen löschen</button>':''}</div></div>
+
+  <div class="card"><h2>Lernfreie Tage (${S.freeDays.length})</h2>
+    <p class="small muted">Im Kalender antippen, um Tage lernfrei zu markieren.</p>
+    ${S.freeDays.length?S.freeDays.sort().map(d=>`<span class="tag" style="margin:2px">${fmt(d,{weekday:'short',day:'numeric',month:'short'})} <a href="#" onclick="toggleFree('${d}');return false">✕</a></span>`).join(''):''}
+  </div>
+
+  <div class="card"><h2>Sichern &amp; übertragen</h2>
+    <p class="small muted">Exportiere deinen Plan als Datei, um ihn zu sichern oder auf ein anderes Gerät oder einen anderen Browser zu übertragen.</p>
+    <div class="row"><button class="btn primary" onclick="exportData()">Exportieren</button>
+    <button class="btn" onclick="document.getElementById('imp').click()">Importieren</button>
+    <input type="file" id="imp" accept=".json,application/json" hidden onchange="importData(this.files[0])"></div>
+    <div style="margin-top:14px"><button class="btn danger" onclick="resetAll()">Alles zurücksetzen</button></div></div>`;
+}
+
+/* ---------- Aktionen ---------- */
+function go(p){ page=p; render(); }
+function setField(k,v){ S[k]=v; save(); render(); }
+function toggleDone(key){ if(S.done[key]) delete S.done[key]; else S.done[key]=todayIso(); save(); render(); }
+function toggleFree(d){ const i=S.freeDays.indexOf(d); if(i>=0) S.freeDays.splice(i,1); else S.freeDays.push(d); save(); render(); }
+function selectDay(d){ selDay=d; render(); }
+function moveMonth(n){ calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+n,1); render(); }
+function editTopic(id,f,v){ const t=S.topics.find(t=>t.id===id); if(!t) return; if(f==='min') v=Math.max(10,v||45); else v=v.trim()||t.name; t[f]=v; save(); render(); }
+function delTopic(id){ S.topics=S.topics.filter(t=>t.id!==id); save(); render(); }
+function clearTopics(){ if(confirm('Alle Themen löschen?')){ S.topics=[]; S.done={}; save(); render(); } }
+function resetAll(){ if(confirm('Alle Daten und den gesamten Plan zurücksetzen?')){ S={...defaults,topics:[],freeDays:[],done:{}}; save(); render(); } }
+function exportData(){
+  const blob = new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = `lernplan-${todayIso()}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function importData(file){
+  if(!file) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try{
+      const d = JSON.parse(r.result);
+      if(!d || !Array.isArray(d.topics)) throw 0;
+      if(!confirm('Aktuellen Plan durch die importierte Datei ersetzen?')) return;
+      S = Object.assign({...defaults,topics:[],freeDays:[],done:{}}, d);
+      save(); render();
+    }catch(e){ alert('Die Datei ist kein gültiger Lernplan.'); }
+  };
+  r.readAsText(file);
+}
+function importTopics(){
+  const txt = document.getElementById('paste').value;
+  const have = new Set(S.topics.map(t=>t.name.toLowerCase()));
+  let n=0;
+  for(let line of txt.split(/\r?\n/)){
+    line = line.replace(/^\s*(#+|[-*•]|\d+[.)])\s*/,'').replace(/[*_`]/g,'').trim();
+    if(!line) continue;
+    let min = 45; const m = line.match(/^(.*?)\s*[;|]\s*(\d+)\s*(?:min)?\s*$/i);
+    if(m){ line=m[1].trim(); min=Math.max(10,+m[2]); }
+    if(!line || have.has(line.toLowerCase())) continue;
+    have.add(line.toLowerCase());
+    S.topics.push({id:'t'+Date.now().toString(36)+n++, name:line, min});
+  }
+  save(); render();
+}
+
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>go(b.dataset.p));
+render();
+</script>
+</body>
+</html>
