@@ -72,10 +72,14 @@ button.btn.danger{color:var(--danger)}
 .task .mv{flex:none;padding:6px 10px;font-size:.8rem;white-space:nowrap}
 .task button.tag{border:0;cursor:pointer;font:inherit;font-size:.75rem}
 .mvs{display:flex;gap:6px;flex:none}
-.pk{position:relative;display:inline-flex}
-.pk span.btn{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:10px;padding:6px 10px;display:inline-flex;align-items:center}
-.pk input[type=date]{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;border:0;opacity:0;cursor:pointer;font-size:16px;overflow:hidden}
-.pk input[type=date]::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;opacity:0;cursor:pointer}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:var(--card);color:var(--text);border-radius:16px;padding:16px;width:100%;max-width:380px;max-height:92vh;overflow:auto}
+.pcal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:8px 0}
+.pcal .dow{text-align:center;font-size:.7rem;color:var(--muted);font-weight:600}
+.pd{font:inherit;font-size:.9rem;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:8px;padding:9px 0;cursor:pointer}
+.pd.off{opacity:.3;cursor:default;background:none}
+.pd.cur{border-style:dashed}
+.pd.sel{background:var(--accent);color:var(--accent-text);border-color:var(--accent);font-weight:700}
 @media(max-width:480px){.task{flex-wrap:wrap}.task .tl{flex-basis:100%}.mvs{margin-left:34px}}
 .folder{border:1px solid var(--line);border-radius:12px;margin-bottom:8px;padding:0 12px 10px;background:var(--bg)}
 .folder summary{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 10px;padding:12px 0;cursor:pointer;list-style:none;font-weight:600}
@@ -85,6 +89,7 @@ button.btn.danger{color:var(--danger)}
 </head>
 <body>
 <main id="app"></main>
+<div id="modal"></div>
 <nav>
   <button data-p="today">Heute</button>
   <button data-p="cal">Kalender</button>
@@ -283,6 +288,7 @@ function render(){
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.p===page));
   const plan = computePlan();
   app.innerHTML = page==='today' ? viewToday(plan) : page==='cal' ? viewCal(plan) : viewSettings();
+  renderModal();
   window.scrollTo(0,0 + (page==='cal'?window.scrollY:0));
 }
 
@@ -299,10 +305,8 @@ function setupHint(){
 function taskHtml(t,editable=true,day=''){
   const sub = subOf(t.subjectId);
   const canMove = !t.done && day && day>=todayIso();
-  const maxD = sub && sub.examDate ? addDays(sub.examDate,-1) : '';
   const mv = canMove ? `<span class="mvs"><button class="btn mv" onclick="moveTask('${t.key}','${day}')" title="Auf den nächsten Lerntag verschieben">${day===todayIso()?'Morgen':'Nächster Tag'} ›</button>
-    <span class="pk"><span class="btn mv" aria-hidden="true">📅</span>
-    <input type="date" min="${todayIso()}" ${maxD?`max="${maxD}"`:''} title="Tag zum Verschieben wählen" aria-label="Tag zum Verschieben wählen" onclick="if(navigator.userAgent.includes('Firefox')&&this.showPicker)try{this.showPicker()}catch(e){}" onchange="moveTaskTo('${t.key}','${day}',this.value,true)"></span></span>` : '';
+    <button class="btn mv" onclick="openMovePicker('${t.key}','${day}')" title="Tag zum Verschieben wählen" aria-label="Tag zum Verschieben wählen">📅</button></span>` : '';
   const pinned = t.moved ? `<button class="tag" onclick="unmoveTask('${t.key}')" title="Verschiebung aufheben">verschoben ✕</button>` : '';
   const line = `${sub?esc(sub.name)+' · ':''}${roundLabel(t.round)}${t.parts>1?` · Teil ${t.part+1}/${t.parts}`:''} · ${fmtMin(t.min)}`;
   // Buttons und Datumsfeld liegen außerhalb des Labels, sonst löst ein Tipp darauf das Abhaken (und ein Neuzeichnen) aus
@@ -505,6 +509,42 @@ function moveTask(key,from){
   moveTaskTo(key,from,d,false);          // „Nächster Tag“ ohne Rückfrage
 }
 /* Aufgabe auf einen frei gewählten Tag verschieben */
+/* Eigene Tagesauswahl zum Verschieben (zuverlässiger als das Datumsfeld des Browsers) */
+let picker = null;
+const DAY_NAMES = ['Mo','Di','Mi','Do','Fr','Sa','So'];
+function openMovePicker(key,from){
+  const base = parse(from>todayIso() ? from : todayIso()); base.setDate(1);
+  picker = { key, from, month:base, to:null }; renderModal();
+}
+function pickMonth(n){ picker.month = new Date(picker.month.getFullYear(), picker.month.getMonth()+n, 1, 12); renderModal(); }
+function pickDay(d){ picker.to = d; renderModal(); }
+function closePicker(){ picker = null; renderModal(); }
+function confirmPick(){ const {key,from,to} = picker; picker = null; renderModal(); moveTaskTo(key,from,to,false); }
+function renderModal(){ const el = document.getElementById('modal'); if(el) el.innerHTML = picker ? pickerHtml() : ''; }
+function pickerHtml(){
+  const s = allSessions().find(x=>x.key===picker.key), sub = s && subOf(s.subjectId);
+  if(!sub){ picker = null; return ''; }
+  const today = todayIso(), maxD = sub.examDate ? addDays(sub.examDate,-1) : '';
+  const y = picker.month.getFullYear(), m = picker.month.getMonth();
+  const offset = (new Date(y,m,1,12).getDay()+6)%7, nDays = new Date(y,m+1,0).getDate();
+  let cells = DAY_NAMES.map(d=>`<div class="dow">${d}</div>`).join('') + '<div></div>'.repeat(offset);
+  for(let d=1; d<=nDays; d++){
+    const s2 = `${y}-${pad(m+1)}-${pad(d)}`;
+    const ok = s2>=today && maxD && s2<=maxD && !S.freeDays.includes(s2) && s2!==picker.from;
+    cells += `<button class="pd ${ok?'':'off'} ${s2===picker.from?'cur':''} ${s2===picker.to?'sel':''}" ${ok?`onclick="pickDay('${s2}')"`:'disabled'}>${d}</button>`;
+  }
+  const f = d => fmt(d,{weekday:'long',day:'numeric',month:'long'});
+  const title = picker.month.toLocaleDateString('de-DE',{month:'long',year:'numeric'});
+  return `<div class="modal-bg" onclick="if(event.target===this)closePicker()"><div class="modal">
+    <h2 style="margin-bottom:4px">Auf welchen Tag verschieben?</h2>
+    <p class="small muted" style="margin:0 0 8px">„${esc(s.name)}“ · ${esc(sub.name)}${maxD?` · möglich bis ${fmt(maxD,{day:'numeric',month:'long'})}`:''}</p>
+    <div class="cal-head"><button class="btn" onclick="pickMonth(-1)">‹</button><b>${title}</b><button class="btn" onclick="pickMonth(1)">›</button></div>
+    <div class="pcal">${cells}</div>
+    <p class="small muted" style="margin:4px 0 12px">${picker.to?`Verschieben auf <b>${f(picker.to)}</b>?`:'Tippe auf einen Tag. Graue Tage sind nicht möglich (Vergangenheit, lernfrei oder ab der Prüfung).'}</p>
+    <div class="row" style="justify-content:flex-end"><button class="btn" onclick="closePicker()">Abbrechen</button>
+      ${picker.to?'<button class="btn primary" onclick="confirmPick()">Verschieben</button>':''}</div>
+  </div></div>`;
+}
 function moveTaskTo(key,from,to,ask=true){
   const s = allSessions().find(x=>x.key===key), sub = s && subOf(s.subjectId); if(!sub || !to) return;
   if(to===from) return render();
