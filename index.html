@@ -86,6 +86,13 @@ button.btn.danger{color:var(--danger)}
 .ck{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border:2px solid var(--muted);border-radius:5px;font-size:.8rem;font-weight:700}
 .ck.on{background:var(--ok);border-color:var(--ok);color:#fff}
 .ck.half{border-color:var(--ok);color:var(--ok)}
+.colors summary{cursor:pointer;font-weight:600;font-size:.9rem;list-style:none;display:flex;align-items:center;padding:4px 0}
+.colors summary::-webkit-details-marker{display:none}
+.colors .sw{padding:8px 0 4px}
+.topics{border-top:1px solid var(--line);padding-top:4px}
+.topics summary{cursor:pointer;font-weight:600;padding:10px 0;list-style:none}
+.topics summary::-webkit-details-marker{display:none}
+.topics[open] summary{margin-bottom:4px}
 .wlist{max-height:46vh;overflow:auto;padding-right:2px}
 .tlist{margin:0 0 4px;padding-left:22px;color:var(--muted);font-size:.9rem}
 .tlist li{padding:2px 0}
@@ -99,9 +106,9 @@ button.btn.danger{color:var(--danger)}
 .pd.sel{background:var(--accent);color:var(--accent-text);border-color:var(--accent);font-weight:700}
 @media(max-width:480px){.task{flex-wrap:wrap}.task .tl{flex-basis:100%}.mvs{margin-left:34px}}
 .folder{border:1px solid var(--line);border-radius:12px;margin-bottom:8px;padding:0 12px 10px;background:var(--bg)}
-.folder summary{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 10px;padding:12px 0;cursor:pointer;list-style:none;font-weight:600}
-.folder summary::-webkit-details-marker{display:none}
-.folder[open] summary{border-bottom:1px solid var(--line);margin-bottom:10px}
+.folder>summary{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 10px;padding:12px 0;cursor:pointer;list-style:none;font-weight:600}
+.folder>summary::-webkit-details-marker{display:none}
+.folder[open]>summary{border-bottom:1px solid var(--line);margin-bottom:10px}
 </style>
 </head>
 <body>
@@ -442,22 +449,23 @@ function viewSettings(){
       <div class="grid" style="margin-bottom:14px">
         <label class="f">Name<input value="${esc(sub.name)}" onchange="setSub('${sub.id}','name',this.value)"></label>
         <label class="f">Prüfungsdatum<input type="date" value="${sub.examDate}" onchange="setSub('${sub.id}','examDate',this.value)"></label>
-        <div class="f">Farbe<div class="sw">${PALETTE.map(c=>`<button class="swb ${hue(sub.id)===c?'on':''}" style="background:${c}" onclick="setSub('${sub.id}','color','${c}')" aria-label="Farbe wählen"></button>`).join('')}</div></div>
+        <details class="colors" data-s="${sub.id}" ${openColors.has(sub.id)?'open':''} ontoggle="toggleColors(this)">
+          <summary>Farbe <span class="dot" style="background:${hue(sub.id)};margin:0 0 0 8px"></span> ›</summary>
+          <div class="sw">${PALETTE.map(c=>`<button class="swb ${hue(sub.id)===c?'on':''}" style="background:${c}" onclick="pickColor('${sub.id}','${c}')" aria-label="Farbe wählen"></button>`).join('')}</div>
+        </details>
         <label class="f">Wiederholungen
           <select onchange="setSub('${sub.id}','repeats',+this.value)">${[0,1,2,3,4,5].map(n=>`<option value="${n}" ${sub.repeats===n?'selected':''}>${n===0?'keine':n+'×'}</option>`).join('')}</select></label>
         <label class="f">Lernverlauf
           <select onchange="setSub('${sub.id}','ramp',this.value)">${Object.entries(RAMP_LABEL).map(([k,v])=>`<option value="${k}" ${sub.ramp===k?'selected':''}>${v}</option>`).join('')}</select>
           <span class="small muted">„Steigend“: je näher die Prüfung, desto mehr pro Tag</span></label>
       </div>
-      ${editTopics.has(sub.id)
-        ? ts.map(t=>`<div class="topic"><input value="${esc(t.name)}" onchange="editTopic('${t.id}','name',this.value)">
-            <button class="btn danger" onclick="delTopic('${t.id}')" aria-label="Löschen">✕</button></div>`).join('')
-        : (ts.length ? `<ol class="tlist">${ts.map(t=>`<li>${esc(t.name)}</li>`).join('')}</ol>` : '')}
-      ${ts.length ? '' : '<p class="muted small">Noch keine Themen in diesem Fach.</p>'}
-      <div class="row" style="margin-top:8px">
-        <button class="btn primary" onclick="openWizard('${sub.id}')">＋ Themen hinzufügen</button>
-        ${ts.length ? `<button class="btn" onclick="toggleEditTopics('${sub.id}')">${editTopics.has(sub.id)?'Fertig':'Themen bearbeiten'}</button>` : ''}
-        <button class="btn danger" onclick="delSubject('${sub.id}')">Fach mit allen Themen löschen</button></div>
+      <details class="topics" data-s="${sub.id}" ${openTopics.has(sub.id)?'open':''} ontoggle="toggleTopics(this)">
+        <summary>Themen (${ts.length}) ›</summary>
+        ${ts.map(t=>`<div class="topic"><input value="${esc(t.name)}" onchange="editTopic('${t.id}','name',this.value)">
+          <button class="btn danger" onclick="delTopic('${t.id}')" aria-label="Löschen">✕</button></div>`).join('') || '<p class="muted small">Noch keine Themen in diesem Fach.</p>'}
+        <button class="btn primary" style="margin-top:6px" onclick="openWizard('${sub.id}')">＋ Themen hinzufügen</button>
+      </details>
+      <div class="row" style="margin-top:12px"><button class="btn danger" onclick="delSubject('${sub.id}')">Fach mit allen Themen löschen</button></div>
     </details>`;
   }).join('');
 
@@ -487,8 +495,10 @@ function viewSettings(){
 }
 
 /* ---------- Aktionen ---------- */
-let openSubj = new Set(), editTopics = new Set();
-function toggleEditTopics(id){ editTopics.has(id) ? editTopics.delete(id) : editTopics.add(id); render(); }
+let openSubj = new Set(), openTopics = new Set(), openColors = new Set();
+function toggleColors(el){ el.open ? openColors.add(el.dataset.s) : openColors.delete(el.dataset.s); }
+function pickColor(id,c){ openColors.delete(id); setSub(id,'color',c); }       // nach der Wahl klappt die Auswahl wieder zu
+function toggleTopics(el){ el.open ? openTopics.add(el.dataset.s) : openTopics.delete(el.dataset.s); }
 function go(p){ page=p; render(); }
 /* Abhaken: die Aufgabe bleibt an dem Tag stehen, an dem sie geplant war (auch im Voraus erledigt) */
 function toggleDone(key,day){ if(S.done[key]) delete S.done[key]; else { S.done[key]=day||todayIso(); delete S.moves[key]; } save(); render(); }
