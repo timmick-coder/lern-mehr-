@@ -109,14 +109,16 @@ button.btn.danger{color:var(--danger)}
 <script>
 /* ---------- Zustand ---------- */
 const KEY = 'lernmehr-v1';
-const fresh = () => ({ subjects:[], topics:[], freeDays:[], done:{}, moves:{}, dayLimit:0, subjectsPerDay:2 });
+const fresh = () => ({ subjects:[], topics:[], freeDays:[], done:{}, moves:{}, dayLimit:0, subjectsPerDay:2, unit:'tasks' });
+/* Gespeicherte Daten laden: „unit“ bewusst nicht vorbelegen, damit alte Zeit-Daten umgerechnet werden */
+const withDefaults = d => { const b = fresh(); delete b.unit; return Object.assign(b, d); };
 let S = load();
 let page = 'today';
 let calMonth = new Date(); calMonth.setDate(1);
 let selDay = null;
 
 function newSubject(name, o={}){
-  return { id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), name, examDate:'', repeats:3, minutes:60, ramp:'rising', ...o };
+  return { id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), name, examDate:'', repeats:3, tasksPerDay:2, ramp:'rising', ...o };
 }
 function getSubject(name){
   let s = S.subjects.find(x=>x.name.toLowerCase()===name.toLowerCase());
@@ -134,15 +136,22 @@ function migrate(s){
       const m = t.name.match(/^(.{1,40}?):\s+(.+)$/), subjName = m ? m[1].trim() : 'Allgemein';
       if(m) t.name = m[2];
       let sub = s.subjects.find(x=>x.name.toLowerCase()===subjName.toLowerCase());
-      if(!sub){ sub = newSubject(subjName,{examDate:s.examDate||'', repeats:s.repeats ?? 2, minutes:s.minutes||60, ramp:'flat'}); s.subjects.push(sub); }
+      if(!sub){ sub = newSubject(subjName,{examDate:s.examDate||'', repeats:s.repeats ?? 2, tasksPerDay:Math.max(1, Math.round((s.minutes||60)/45)), ramp:'flat'}); s.subjects.push(sub); }
       t.subjectId = sub.id;
     }
     if(s.subjects.length>1 && !s.dayLimit) s.dayLimit = s.minutes||0;   // bisherige Tageszeit wird zum Gesamtlimit
   }
+  // Zeiteinheiten abschaffen: Minuten pro Tag → Aufgaben pro Tag (ca. 45 Minuten = 1 Aufgabe)
+  if(s.unit !== 'tasks'){
+    for(const sub of s.subjects){ if(sub.tasksPerDay === undefined) sub.tasksPerDay = Math.max(1, Math.round((+sub.minutes||60)/45)); delete sub.minutes; }
+    s.dayLimit = s.dayLimit ? Math.max(1, Math.round(s.dayLimit/45)) : 0;
+    for(const t of s.topics) delete t.min;
+    delete s.minutes; s.unit = 'tasks';
+  }
   return s;
 }
 function load(){
-  try{ return migrate(Object.assign(fresh(), JSON.parse(localStorage.getItem(KEY)||'{}'))); }
+  try{ return migrate(withDefaults(JSON.parse(localStorage.getItem(KEY)||'{}'))); }
   catch(e){ return fresh(); }
 }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
@@ -157,26 +166,21 @@ const diffDays = (a,b) => Math.round((parse(b)-parse(a))/864e5);
 const fmt = (s,o) => parse(s).toLocaleDateString('de-DE',o);
 const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const hue = id => { let h=0; for(const c of String(id)) h=(h*31+c.charCodeAt(0))%360; return `hsl(${h} 65% 55%)`; };
-const fmtMin = m => m>=60 ? `${Math.floor(m/60)} h${m%60?` ${m%60} min`:''}` : `${m} min`;
+const nAufg = n => `${n} ${n===1?'Aufgabe':'Aufgaben'}`;
 
 /* ---------- Planung ---------- */
 const RAMP = { flat:0, rising:1, strong:3 };
 const RAMP_LABEL = { flat:'Gleichmäßig', rising:'Steigend', strong:'Stark steigend' };
 const subOf = id => S.subjects.find(s=>s.id===id);
-const subBudget = sub => Math.max(15, +sub.minutes||60);
+const subBudget = sub => Math.max(1, Math.round(+sub.tasksPerDay)||1);     // Aufgaben pro Tag für dieses Fach
 function roundLabel(r){ return r===0 ? 'Lernen' : `Wiederholung ${r}`; }
 
 function subjectSessions(sub){
-  const budget = subBudget(sub), list = [];
-  const topics = S.topics.filter(t=>t.subjectId===sub.id);
+  // Jedes Thema = eine Aufgabe pro Durchgang (Lernen + Wiederholungen); „min“ ist nur das Gewicht 1
+  const list = [], topics = S.topics.filter(t=>t.subjectId===sub.id);
   for(let r=0;r<=sub.repeats;r++){
     for(const t of topics){
-      const total = r===0 ? t.min : Math.max(10, Math.round(t.min*0.5/5)*5);
-      const parts = Math.ceil(total/budget);
-      for(let p=0;p<parts;p++){
-        const m = p<parts-1 ? budget : total-budget*(parts-1);
-        list.push({ key:`${t.id}:${r}:${p}`, subjectId:sub.id, topicId:t.id, name:t.name, round:r, part:p, parts, min:m });
-      }
+      list.push({ key:`${t.id}:${r}:0`, subjectId:sub.id, topicId:t.id, name:t.name, round:r, part:0, parts:1, min:1 });
     }
   }
   return list;
@@ -260,7 +264,7 @@ function computePlan(){
         if(lighter){ target -= lighter; if(target<=0){ globalLeft -= used; continue; } }
         while(q[id].length){
           const s = q[id][0];
-          const fits = (used===0 && !lighter) ? s.min<=cap : used+s.min <= Math.min(cap, target+10);
+          const fits = (used===0 && !lighter) ? s.min<=cap : used+s.min <= Math.min(cap, target);
           if(!fits) break;
           (out[d] ||= []).push({...s,done:!!S.done[s.key]}); used += s.min; rest[id] -= s.min; q[id].shift();
         }
@@ -308,7 +312,7 @@ const lastExam = () => S.subjects.map(s=>s.examDate).filter(Boolean).sort().pop(
 
 function setupHint(){
   return `<div class="card empty"><h2>Noch kein Lernplan</h2>
-    <p class="muted">Lege in den Einstellungen deine Fächer mit Prüfungsdatum, Lernzeit und Themen an.</p>
+    <p class="muted">Lege in den Einstellungen deine Fächer mit Prüfungsdatum an, bestimme, wie viele Themen pro Tag drankommen, und füge deine Themen hinzu.</p>
     <button class="btn primary" onclick="go('set')">Zu den Einstellungen</button></div>`;
 }
 
@@ -318,14 +322,14 @@ function taskHtml(t,editable=true,day=''){
   const mv = canMove ? `<span class="mvs"><button class="btn mv" onclick="moveTask('${t.key}','${day}')" title="Auf den nächsten Lerntag verschieben">${day===todayIso()?'Morgen':'Nächster Tag'} ›</button>
     <button class="btn mv" onclick="openMovePicker('${t.key}','${day}')" title="Tag zum Verschieben wählen" aria-label="Tag zum Verschieben wählen">📅</button></span>` : '';
   const pinned = t.moved ? `<button class="tag" onclick="unmoveTask('${t.key}')" title="Verschiebung aufheben">verschoben ✕</button>` : '';
-  const line = `${sub?esc(sub.name)+' · ':''}${roundLabel(t.round)}${t.parts>1?` · Teil ${t.part+1}/${t.parts}`:''} · ${fmtMin(t.min)}`;
+  const line = `${sub?esc(sub.name)+' · ':''}${roundLabel(t.round)}`;
   // Buttons und Datumsfeld liegen außerhalb des Labels, sonst löst ein Tipp darauf das Abhaken (und ein Neuzeichnen) aus
   return `<div class="task ${t.done?'done':''}" style="--c:${hue(t.subjectId)}">
     <label class="tl">
       ${editable?`<input type="checkbox" ${t.done?'checked':''} onchange="toggleDone('${t.key}','${day||todayIso()}')">`:''}
       <div class="t"><div>${esc(t.name)}</div><div class="small muted">${line}</div></div>
     </label>
-    ${t.over?'<span class="tag over">Zu wenig Zeit</span>':''}${pinned}${mv}
+    ${t.over?'<span class="tag over">Zu voll</span>':''}${pinned}${mv}
   </div>`;
 }
 
@@ -339,22 +343,20 @@ function viewToday(plan){
   const today = todayIso(), {info} = plan;
   const tasks = plan.days[today] || [];
   const isFree = S.freeDays.includes(today);
-  const todayMin = tasks.reduce((a,t)=>a+t.min,0), todayDone = tasks.filter(t=>t.done).reduce((a,t)=>a+t.min,0);
+  const nDone = tasks.filter(t=>t.done).length, pctToday = tasks.length ? Math.round(nDone/tasks.length*100) : 0;
   const exToday = examsOn(today);
 
   let body;
   if(isFree) body = `<div class="card empty"><h2>Heute ist lernfrei 🎉</h2><p class="muted">Der Plan wurde auf die übrigen Tage verteilt. Aufheben kannst du das im Kalender.</p></div>`;
-  else if(!tasks.length) body = `<div class="card empty"><h2>Für heute ist nichts geplant ✅</h2><p class="muted">${info.pendingMin?'Die nächsten Aufgaben findest du im Kalender.':'Du hast alles geschafft!'}</p></div>`;
+  else if(!tasks.length) body = `<div class="card empty"><h2>Für heute ist nichts geplant ✅</h2><p class="muted">${info.pendingMin?'Die nächsten Themen findest du im Kalender.':'Du hast alles geschafft!'}</p></div>`;
   else body = `<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:10px">
-      <h2 style="margin:0">Heute zu erledigen</h2><span class="muted small">${fmtMin(todayDone)} / ${fmtMin(todayMin)}</span></div>
+      <h2 style="margin:0">Heute zu erledigen</h2><span class="muted small">${nDone} / ${tasks.length}</span></div>
       ${tasks.map(t=>taskHtml(t,true,today)).join('')}</div>`;
 
   // Statistik nur für heute
-  const nDone = tasks.filter(t=>t.done).length, pctToday = todayMin ? Math.round(todayDone/todayMin*100) : 0;
   const stats = (isFree || !tasks.length) ? '' : `<div class="card"><div class="stats">
       <div class="stat"><b>${pctToday}%</b><span class="small muted">heute geschafft</span></div>
-      <div class="stat"><b>${nDone} / ${tasks.length}</b><span class="small muted">Aufgaben erledigt</span></div>
-      <div class="stat"><b>${fmtMin(todayDone)}</b><span class="small muted">von ${fmtMin(todayMin)} gelernt</span></div></div>
+      <div class="stat"><b>${nDone} / ${tasks.length}</b><span class="small muted">Themen erledigt</span></div></div>
       <div class="bar"><div style="width:${pctToday}%"></div></div></div>`;
   return `<h1>Heute</h1><p class="muted">${fmt(today,{weekday:'long',day:'numeric',month:'long'})}</p>
     ${exToday.length?`<div class="notice ok">Heute Prüfung: <b>${exToday.map(esc).join(', ')}</b> – viel Erfolg! 🍀</div>`:''}
@@ -372,7 +374,7 @@ function overviewHtml(info){
   return `<div class="card"><div class="stats">
       <div class="stat"><b>${next?diffDays(today,next.examDate):'–'}</b><span class="small muted">${next?`Tage bis ${esc(next.name)}`:'keine Prüfung offen'}</span></div>
       <div class="stat"><b>${pct}%</b><span class="small muted">insgesamt geschafft</span></div>
-      <div class="stat"><b>${fmtMin(info.pendingMin)}</b><span class="small muted">noch offen</span></div></div>
+      <div class="stat"><b>${info.pendingMin}</b><span class="small muted">${info.pendingMin===1?'Thema':'Themen'} noch offen</span></div></div>
       <div class="bar"><div style="width:${pct}%"></div></div></div>`;
 }
 function examsHtml(){
@@ -393,8 +395,8 @@ function warnHtml(info){
   if(bad.length){
     h += `<div class="notice"><b>Der Plan ist zu voll.</b><br>${bad.map(s=>{
       const i = info.subjects[s.id];
-      return i.status==='noroom' ? `${esc(s.name)}: kein freier Lerntag mehr vor der Prüfung.` : `${esc(s.name)}: es fehlen ca. ${fmtMin(i.overflow)}.`;
-    }).join('<br>')}<br><span class="small">Erhöhe die Lernzeit (pro Fach oder insgesamt), reduziere Wiederholungen oder streiche Lernfrei-Tage.</span></div>`;
+      return i.status==='noroom' ? `${esc(s.name)}: kein freier Lerntag mehr vor der Prüfung.` : `${esc(s.name)}: ${i.overflow===1?'ein Thema passt':`${i.overflow} Themen passen`} nicht mehr rein.`;
+    }).join('<br>')}<br><span class="small">Erhöhe die Themen pro Tag (pro Fach oder insgesamt), reduziere Wiederholungen oder streiche Lernfrei-Tage.</span></div>`;
   }
   if(info.noDate.length) h += `<div class="notice">Für <b>${info.noDate.map(esc).join(', ')}</b> fehlt noch das Prüfungsdatum – ${info.noDate.length>1?'diese Fächer sind':'dieses Fach ist'} noch nicht im Plan.</div>`;
   return h;
@@ -409,12 +411,11 @@ function viewCal(plan){
   for(let d=1; d<=nDays; d++){
     const s = `${y}-${pad(m+1)}-${pad(d)}`;
     const tasks = plan.days[s] || [], free = S.freeDays.includes(s), ex = examsOn(s);
-    const mins = tasks.reduce((a,t)=>a+t.min,0);
     const show = ex.length ? 2 : 3;
     const chips = tasks.slice(0,show).map(t=>`<span class="chip ${t.done?'d':''}" style="--c:${hue(t.subjectId)}">${esc(t.name)}</span>`).join('') + (tasks.length>show?`<span class="muted">+${tasks.length-show}</span>`:'');
     cells += `<button class="day ${free?'free':''} ${s===today?'today':''} ${s===selDay?'sel':''} ${ex.length?'exam':''}" onclick="selectDay('${s}')">
       <span class="n">${d}</span>${ex.length?`<span class="chip" style="--c:var(--danger)">${ex.map(esc).join(', ')}</span>`:''}${free?'<span class="muted">frei</span>':chips}
-      ${mins&&!free?`<span class="muted m">${fmtMin(mins)}</span>`:''}</button>`;
+      ${tasks.length&&!free?`<span class="muted m">${tasks.filter(t=>t.done).length}/${tasks.length}</span>`:''}</button>`;
   }
   const title = calMonth.toLocaleDateString('de-DE',{month:'long',year:'numeric'});
   return `<h1>Kalender</h1>${warnHtml(plan.info)}${overviewHtml(plan.info)}
@@ -429,7 +430,7 @@ function dayDetail(plan){
   return `<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">${fmt(selDay,{weekday:'long',day:'numeric',month:'long'})}</h2>
     ${canToggle?`<button class="btn ${free?'':'danger'}" onclick="toggleFree('${selDay}')">${free?'Lernfrei aufheben':'Lernfrei machen'}</button>`:''}</div>
     ${ex.length?`<p>Prüfung: <b>${ex.map(esc).join(', ')}</b> 🍀</p>`:''}
-    ${free?'<p class="muted">Lernfreier Tag – keine Aufgaben.</p>':tasks.length?tasks.map(t=>taskHtml(t,true,selDay)).join(''):(ex.length?'':'<p class="muted">Keine Aufgaben an diesem Tag.</p>')}</div>`;
+    ${free?'<p class="muted">Lernfreier Tag – keine Themen.</p>':tasks.length?tasks.map(t=>taskHtml(t,true,selDay)).join(''):(ex.length?'':'<p class="muted">Keine Themen an diesem Tag.</p>')}</div>`;
 }
 
 function viewSettings(){
@@ -439,11 +440,12 @@ function viewSettings(){
     const dl = sub.examDate ? diffDays(today,sub.examDate) : null;
     const exam = sub.examDate ? `Prüfung ${fmt(sub.examDate,{day:'numeric',month:'short'})}${dl>0?` · noch ${dl} T.`:dl===0?' · heute':' · vorbei'}` : 'kein Prüfungsdatum';
     return `<details class="folder" data-s="${sub.id}" ${openSubj.has(sub.id)?'open':''} ontoggle="toggleSubj(this)">
-      <summary><span class="fname">📁 ${esc(sub.name)}</span><span class="small muted">${exam} · ${ts.length} ${ts.length===1?'Thema':'Themen'} · ${fmtMin(ts.reduce((a,t)=>a+t.min,0))}</span></summary>
+      <summary><span class="fname">📁 ${esc(sub.name)}</span><span class="small muted">${exam} · ${ts.length} ${ts.length===1?'Thema':'Themen'}</span></summary>
       <div class="grid" style="margin-bottom:14px">
         <label class="f">Name<input value="${esc(sub.name)}" onchange="setSub('${sub.id}','name',this.value)"></label>
         <label class="f">Prüfungsdatum<input type="date" value="${sub.examDate}" onchange="setSub('${sub.id}','examDate',this.value)"></label>
-        <label class="f">Lernzeit pro Tag (Min.)<input type="number" min="15" step="15" value="${sub.minutes}" onchange="setSub('${sub.id}','minutes',this.value)"></label>
+        <label class="f">Themen pro Tag<input type="number" min="1" step="1" value="${subBudget(sub)}" onchange="setSub('${sub.id}','tasksPerDay',this.value)">
+          <span class="small muted">höchstens so viele Themen pro Tag (Lernen oder Wiederholen)</span></label>
         <label class="f">Wiederholungen
           <select onchange="setSub('${sub.id}','repeats',+this.value)">${[0,1,2,3,4,5].map(n=>`<option value="${n}" ${sub.repeats===n?'selected':''}>${n===0?'keine':n+'×'}</option>`).join('')}</select></label>
         <label class="f">Lernverlauf
@@ -451,7 +453,6 @@ function viewSettings(){
           <span class="small muted">„Steigend“: je näher die Prüfung, desto mehr pro Tag</span></label>
       </div>
       ${ts.map(t=>`<div class="topic"><input value="${esc(t.name)}" onchange="editTopic('${t.id}','name',this.value)">
-        <input type="number" min="10" step="5" value="${t.min}" title="Minuten" onchange="editTopic('${t.id}','min',+this.value)"><span class="small muted">min</span>
         <button class="btn danger" onclick="delTopic('${t.id}')" aria-label="Löschen">✕</button></div>`).join('') || '<p class="muted small">Noch keine Themen in diesem Fach.</p>'}
       <button class="btn danger" style="margin-top:8px" onclick="delSubject('${sub.id}')">Fach mit allen Themen löschen</button>
     </details>`;
@@ -460,23 +461,23 @@ function viewSettings(){
 
   return `<h1>Einstellungen</h1><p class="muted">Der Plan passt sich bei jeder Änderung automatisch an.</p>
   ${subjList}
-  <div class="card"><h2>Gesamte Lernzeit</h2>
-    <label class="f">Maximal pro Tag über alle Fächer (Minuten)
-      <input type="number" min="0" step="15" value="${S.dayLimit}" onchange="setLimit(this.value)">
-      <span class="small muted">0 = kein Limit. Sonst teilen sich alle Fächer diese Zeit, das Fach mit der nächsten Prüfung hat Vorrang.</span></label>
+  <div class="card"><h2>Lernmenge pro Tag</h2>
+    <label class="f">Maximal Themen pro Tag über alle Fächer
+      <input type="number" min="0" step="1" value="${S.dayLimit}" onchange="setLimit(this.value)">
+      <span class="small muted">0 = kein Limit. Sonst teilen sich alle Fächer diese Themen, das Fach mit der nächsten Prüfung hat Vorrang. Ein Thema ist erledigt, sobald du es abhakst – egal wie lange es dauert.</span></label>
     <label class="f" style="margin-top:14px">Fächer pro Tag
       <select onchange="setPerDay(+this.value)">${[[0,'Alle Fächer jeden Tag'],[1,'1 Fach pro Tag'],[2,'Bis zu 2 Fächer pro Tag'],[3,'Bis zu 3 Fächer pro Tag'],[4,'Bis zu 4 Fächer pro Tag']].map(([v,l])=>`<option value="${v}" ${(+S.subjectsPerDay||0)===v?'selected':''}>${l}</option>`).join('')}</select>
       <span class="small muted">Die Fächer wechseln sich ab. Jeden Tag kommen die dringendsten dran, die anderen bekommen dafür an ihren Tagen mehr.</span></label></div>
 
   <div class="card"><h2>Fächer &amp; Prüfungen (${S.subjects.length})</h2>
-    <p class="small muted">Jedes Fach hat sein eigenes Prüfungsdatum, seine eigene Lernzeit pro Tag und seinen eigenen Lernverlauf.</p>
+    <p class="small muted">Jedes Fach hat sein eigenes Prüfungsdatum, seine eigenen Themen pro Tag und seinen eigenen Lernverlauf.</p>
     ${folders || '<p class="muted">Noch keine Fächer.</p>'}
     <div class="row" style="margin-top:10px"><input id="newSubj" placeholder="Neues Fach, z. B. Marketing" style="flex:1;min-width:160px"><button class="btn primary" onclick="addSubject()">Fach hinzufügen</button></div></div>
 
   <div class="card"><h2>Themen einfügen</h2>
-    <p class="small muted">Füge deinen Lernzettel ein – ein Thema pro Zeile. Optional mit Dauer: <code>Zellatmung; 60</code>. Aufzählungszeichen, Nummern und Markdown-Überschriften (#) werden entfernt. Standard: 45 min.</p>
+    <p class="small muted">Füge deinen Lernzettel ein – ein Thema pro Zeile. Aufzählungszeichen, Nummern und Markdown-Überschriften (#) werden entfernt.</p>
     <label class="f" style="margin-bottom:10px">Fach<input id="pasteSubj" list="subjList" placeholder="Fach wählen oder neu eintippen"></label>
-    <textarea id="paste" placeholder="Zellatmung; 60&#10;Photosynthese&#10;Genetik; 90"></textarea>
+    <textarea id="paste" placeholder="Zellatmung&#10;Photosynthese&#10;Genetik"></textarea>
     <div class="row" style="margin-top:8px"><button class="btn primary" onclick="importTopics()">Hinzufügen</button></div></div>
 
   <div class="card"><h2>Themen aus Dateien</h2>
@@ -603,10 +604,10 @@ function selectDay(d){ selDay=d; render(); }
 function moveMonth(n){ calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+n,1); render(); }
 function toggleSubj(el){ el.open ? openSubj.add(el.dataset.s) : openSubj.delete(el.dataset.s); }
 function setPerDay(v){ S.subjectsPerDay = v; save(); render(); }
-function setLimit(v){ S.dayLimit = Math.max(0, +v||0); save(); render(); }
+function setLimit(v){ S.dayLimit = Math.max(0, Math.round(+v)||0); save(); render(); }
 function setSub(id,k,v){
   const s = subOf(id); if(!s) return;
-  if(k==='minutes') v = Math.max(15, +v||60);
+  if(k==='tasksPerDay') v = Math.max(1, Math.round(+v)||1);
   if(k==='name'){ v = v.trim(); if(!v) return render(); }
   s[k] = v; save(); render();
 }
@@ -620,7 +621,7 @@ function delSubject(id){
   if(!confirm(`Fach „${s.name}“ mit ${n} Themen löschen?`)) return;
   S.topics = S.topics.filter(t=>t.subjectId!==id); S.subjects = S.subjects.filter(x=>x.id!==id); save(); render();
 }
-function editTopic(id,f,v){ const t=S.topics.find(t=>t.id===id); if(!t) return; if(f==='min') v=Math.max(10,v||45); else v=v.trim()||t.name; t[f]=v; save(); render(); }
+function editTopic(id,f,v){ const t=S.topics.find(t=>t.id===id); if(!t) return; v=v.trim()||t.name; t[f]=v; save(); render(); }
 function delTopic(id){ S.topics=S.topics.filter(t=>t.id!==id); save(); render(); }
 function resetAll(){ if(confirm('Alle Daten und den gesamten Plan zurücksetzen?')){ S=fresh(); save(); render(); } }
 /* ---------- Themen aus Dateien (PDF / Bild / Text) ---------- */
@@ -724,7 +725,7 @@ function addTopics(sub, items){   // items: [{name,min}]
     const name = it.name.trim();
     if(!name || have.has(name.toLowerCase())) continue;
     have.add(name.toLowerCase());
-    S.topics.push({id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+n++, subjectId:sub.id, name, min:it.min||45});
+    S.topics.push({id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+n++, subjectId:sub.id, name});
   }
   openSubj.add(sub.id);
 }
@@ -751,7 +752,7 @@ function importData(file){
       const d = JSON.parse(r.result);
       if(!d || !Array.isArray(d.topics)) throw 0;
       if(!confirm('Aktuellen Plan durch die importierte Datei ersetzen?')) return;
-      S = migrate(Object.assign(fresh(), d));
+      S = migrate(withDefaults(d));
       save(); render();
     }catch(e){ alert('Die Datei ist kein gültiger Lernplan.'); }
   };
@@ -764,9 +765,8 @@ function importTopics(){
   for(let line of txt.split(/\r?\n/)){
     line = line.replace(/^\s*(#+|[-*•]|\d+[.)])\s*/,'').replace(/[*_`]/g,'').trim();
     if(!line) continue;
-    let min = 45; const m = line.match(/^(.*?)\s*[;|]\s*(\d+)\s*(?:min)?\s*$/i);
-    if(m){ line=m[1].trim(); min=Math.max(10,+m[2]); }
-    items.push({name:line,min});
+    line = line.replace(/\s*[;|]\s*\d+\s*(?:min)?\s*$/i,'').trim();      // alte Zeitangaben wie „; 60“ ignorieren
+    items.push({name:line});
   }
   if(!items.length) return;
   addTopics(getSubject(subj), items);
