@@ -293,6 +293,21 @@ function viewSettings(){
     <div class="row" style="margin-top:8px"><button class="btn primary" onclick="importTopics()">Hinzufügen</button>
     ${S.topics.length?'<button class="btn danger" onclick="clearTopics()">Alle Themen löschen</button>':''}</div></div>
 
+  <div class="card"><h2>Themen aus Dateien</h2>
+    <p class="small muted">Lade deine Lernzettel hoch – PDFs, Fotos oder Screenshots (auch mehrere auf einmal). Text wird direkt gelesen, Bilder und gescannte PDFs per Texterkennung (beim ersten Mal ein paar MB Download). Alles passiert auf deinem Gerät, nichts wird hochgeladen.</p>
+    <button class="btn primary" onclick="document.getElementById('files').click()">Dateien auswählen</button>
+    <input type="file" id="files" multiple accept="application/pdf,image/*,.txt,.md" hidden onchange="handleFiles(this.files)">
+    <div id="xstatus" class="small muted" style="margin-top:10px">${busy?'Wird gelesen …':''}</div>
+    ${groups.map((g,gi)=>`<div style="margin-top:16px"><b>${esc(g.file)}</b>
+      <div class="row" style="margin:8px 0"><label class="f" style="flex:1;min-width:180px">Fach (wird vor jedes Thema gesetzt)
+        <input value="${esc(g.prefix)}" placeholder="z. B. Marketing" onchange="groups[${gi}].prefix=this.value.trim()"></label>
+        <button class="btn" onclick="gAll(${gi},true)">Alle</button><button class="btn" onclick="gAll(${gi},false)">Keine</button></div>
+      ${g.lines.length?g.lines.map((l,li)=>`<div class="topic" style="${l.on?'':'opacity:.55'}"><input type="checkbox" style="width:22px;flex:none" ${l.on?'checked':''} onchange="groups[${gi}].lines[${li}].on=this.checked;render()">
+        <input value="${esc(l.t)}" onchange="groups[${gi}].lines[${li}].t=this.value"></div>`).join(''):'<p class="muted small">Kein Text erkannt.</p>'}</div>`).join('')}
+    ${groups.length?`<div class="row" style="margin-top:12px"><button class="btn primary" onclick="addGroups()">Ausgewählte Themen hinzufügen</button><button class="btn" onclick="groups=[];render()">Verwerfen</button></div>
+      <p class="small muted">Prüfe die Liste: Überschriften und Störtext sind vorab abgewählt, du kannst alles anpassen.</p>`:''}
+  </div>
+
   <div class="card"><h2>Lernfreie Tage (${S.freeDays.length})</h2>
     <p class="small muted">Im Kalender antippen, um Tage lernfrei zu markieren.</p>
     ${S.freeDays.length?S.freeDays.sort().map(d=>`<span class="tag" style="margin:2px">${fmt(d,{weekday:'short',day:'numeric',month:'short'})} <a href="#" onclick="toggleFree('${d}');return false">✕</a></span>`).join(''):''}
@@ -317,6 +332,113 @@ function editTopic(id,f,v){ const t=S.topics.find(t=>t.id===id); if(!t) return; 
 function delTopic(id){ S.topics=S.topics.filter(t=>t.id!==id); save(); render(); }
 function clearTopics(){ if(confirm('Alle Themen löschen?')){ S.topics=[]; S.done={}; save(); render(); } }
 function resetAll(){ if(confirm('Alle Daten und den gesamten Plan zurücksetzen?')){ S={...defaults,topics:[],freeDays:[],done:{}}; save(); render(); } }
+/* ---------- Themen aus Dateien (PDF / Bild / Text) ---------- */
+let groups = [], busy = false;
+const LIBS = {
+  pdf: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+  pdfWorker: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
+  tess: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js'
+};
+const scriptCache = {};
+function loadScript(url){
+  return scriptCache[url] ||= new Promise((res,rej)=>{
+    const s = document.createElement('script'); s.src = url; s.onload = res;
+    s.onerror = ()=>{ delete scriptCache[url]; rej(new Error('Bibliothek konnte nicht geladen werden (Internet?)')); };
+    document.head.appendChild(s);
+  });
+}
+function setStatus(t){ const el = document.getElementById('xstatus'); if(el) el.textContent = t; }
+
+let ocrWorker = null;
+async function ocr(src){
+  await loadScript(LIBS.tess);
+  if(!ocrWorker){ setStatus('Texterkennung wird vorbereitet (einmaliger Download) …'); ocrWorker = await Tesseract.createWorker('deu'); }
+  const r = await ocrWorker.recognize(src);
+  return r.data.text;
+}
+
+async function pdfText(file){
+  await loadScript(LIBS.pdf);
+  if(!pdfjsLib.GlobalWorkerOptions.workerSrc.startsWith('blob:')){
+    const code = await (await fetch(LIBS.pdfWorker)).text();
+    pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([code],{type:'text/javascript'}));
+  }
+  const pdf = await pdfjsLib.getDocument({data: await file.arrayBuffer()}).promise;
+  let out = '';
+  for(let p=1;p<=pdf.numPages;p++){
+    setStatus(`${file.name}: Seite ${p} von ${pdf.numPages} …`);
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    const rows = {};
+    for(const it of tc.items){ if(!it.str.trim()) continue; const k = Math.round(it.transform[5]/4); (rows[k] ||= []).push(it); }
+    let txt = Object.keys(rows).map(Number).sort((a,b)=>b-a)
+      .map(k=>rows[k].sort((a,b)=>a.transform[4]-b.transform[4]).map(i=>i.str).join(' ')).join('\n');
+    if((txt.match(/\p{L}/gu)||[]).length < 15){            // kein Textlayer → Seite als Bild lesen
+      const vp = page.getViewport({scale:2.5}), cv = document.createElement('canvas');
+      cv.width = vp.width; cv.height = vp.height;
+      await page.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;
+      setStatus(`${file.name}: Seite ${p} wird per Texterkennung gelesen …`);
+      txt = await ocr(cv);
+    }
+    out += txt + '\n';
+  }
+  return out;
+}
+
+const STOP = /^(lernplan|thema|meine lernnotizen|offene fragen|notizen|seite\s*\d|inhalt|inhaltsverzeichnis)\b|viermal lernen|abhaken|goodnotes|\d{1,2}:\d{2}/i;
+function cleanLine(l){
+  const t = l.replace(/[□■☐☑☒✓✔▪●○]/g,' ').replace(/^\s*(#+|[-*•·]|\d+[.)])\s*/,'').replace(/[*_`|]/g,' ').replace(/\s+/g,' ').trim();
+  // Reste von Kästchen/Tabellenspalten am Zeilenende (z. B. "[ [1 =") abschneiden
+  const tok = t.split(' ');
+  while(tok.length>1 && /^(?:[^\p{L}\d]+.*|[^\p{L}]*\p{Ll}[^\p{L}]*|[^\p{L}]+\p{Lu}[^\p{L}]*|.*[\[\]=]+.*)$/u.test(tok[tok.length-1]) && !(/\p{L}/u.test(tok[tok.length-1]) && /[?!.:)]$/.test(tok[tok.length-1])) ) tok.pop();
+  return tok.join(' ');
+}
+function candidates(text){
+  const seen = new Set(), res = [];
+  for(const raw of text.split(/\r?\n/)){
+    const t = cleanLine(raw);
+    if(!t || seen.has(t.toLowerCase())) continue;
+    seen.add(t.toLowerCase());
+    const letters = (t.match(/\p{L}/gu)||[]).length;
+    const on = t.length>=5 && t.length<=90 && letters/t.length>=0.7 && !STOP.test(t) && !/^[\d\s.,-]+$/.test(t);
+    res.push({t,on});
+  }
+  return res;
+}
+function prefixFromName(n){
+  return n.replace(/\.[^.]+$/,'').replace(/^lernplan[\s_-]*/i,'').replace(/[_-]+/g,' ').replace(/\s*\(\d+\)$/,'').trim();
+}
+
+async function handleFiles(list){
+  const files = [...list]; if(!files.length) return;
+  busy = true; setStatus('Wird gelesen …');
+  for(const f of files){
+    try{
+      let text;
+      if(f.type==='application/pdf' || /\.pdf$/i.test(f.name)) text = await pdfText(f);
+      else if(f.type.startsWith('image/')){ setStatus(`${f.name}: Texterkennung läuft …`); text = await ocr(f); }
+      else text = await f.text();
+      groups.push({file:f.name, prefix:prefixFromName(f.name), lines:candidates(text)});
+    }catch(e){
+      groups.push({file:f.name, prefix:'', lines:[]});
+      alert(`„${f.name}“ konnte nicht gelesen werden: ${e.message||e}`);
+    }
+  }
+  busy = false; render();
+}
+function gAll(gi,on){ groups[gi].lines.forEach(l=>l.on=on); render(); }
+function addGroups(){
+  const have = new Set(S.topics.map(t=>t.name.toLowerCase())); let n=0;
+  for(const g of groups) for(const l of g.lines){
+    if(!l.on) continue;
+    const name = (g.prefix ? g.prefix+': ' : '') + l.t.trim();
+    if(!l.t.trim() || have.has(name.toLowerCase())) continue;
+    have.add(name.toLowerCase());
+    S.topics.push({id:'t'+Date.now().toString(36)+n++, name, min:45});
+  }
+  groups = []; save(); render();
+}
+
 function exportData(){
   const blob = new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
   const a = document.createElement('a');
