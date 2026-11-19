@@ -462,17 +462,16 @@ function viewSettings(){
   }).join('');
 
   return `<h1>Einstellungen</h1><p class="muted">Der Plan passt sich bei jeder Änderung automatisch an.</p>
-  <div class="card"><h2>Planung</h2>
-    <p class="small muted" style="margin:0 0 12px">Die App verteilt deine Themen selbst auf die Tage bis zur Prüfung. Ein Thema ist erledigt, sobald du es abhakst – egal wie lange es dauert.</p>
-    <label class="f">Fächer pro Tag
-      <select onchange="setPerDay(+this.value)">${[[0,'Alle Fächer jeden Tag'],[1,'1 Fach pro Tag'],[2,'Bis zu 2 Fächer pro Tag'],[3,'Bis zu 3 Fächer pro Tag'],[4,'Bis zu 4 Fächer pro Tag']].map(([v,l])=>`<option value="${v}" ${(+S.subjectsPerDay||0)===v?'selected':''}>${l}</option>`).join('')}</select>
-      <span class="small muted">Die Fächer wechseln sich ab. Jeden Tag kommen die dringendsten dran, die anderen bekommen dafür an ihren Tagen mehr.</span></label></div>
-
   <div class="card"><h2>Fächer &amp; Prüfungen (${S.subjects.length})</h2>
     <p class="small muted">Jedes Fach hat sein eigenes Prüfungsdatum, seine eigenen Wiederholungen und seinen eigenen Lernverlauf.</p>
     ${folders || '<p class="muted">Noch keine Fächer.</p>'}
     <div class="row" style="margin-top:10px"><button class="btn primary" onclick="openWizard()">＋ Fach hinzufügen</button></div></div>
 
+  <div class="card"><h2>Planung</h2>
+    <p class="small muted" style="margin:0 0 12px">Die App verteilt deine Themen selbst auf die Tage bis zur Prüfung. Ein Thema ist erledigt, sobald du es abhakst – egal wie lange es dauert.</p>
+    <label class="f">Fächer pro Tag
+      <select onchange="setPerDay(+this.value)">${[[0,'Alle Fächer jeden Tag'],[1,'1 Fach pro Tag'],[2,'Bis zu 2 Fächer pro Tag'],[3,'Bis zu 3 Fächer pro Tag'],[4,'Bis zu 4 Fächer pro Tag']].map(([v,l])=>`<option value="${v}" ${(+S.subjectsPerDay||0)===v?'selected':''}>${l}</option>`).join('')}</select>
+      <span class="small muted">Die Fächer wechseln sich ab. Jeden Tag kommen die dringendsten dran, die anderen bekommen dafür an ihren Tagen mehr.</span></label></div>
 
   <div class="card"><h2>Lernfreie Tage (${S.freeDays.length})</h2>
     <p class="small muted">Im Kalender antippen, um Tage lernfrei zu markieren.</p>
