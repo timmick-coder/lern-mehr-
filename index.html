@@ -68,6 +68,10 @@ button.btn.danger{color:var(--danger)}
 .topic{display:flex;gap:8px;align-items:center;margin-bottom:6px}
 .topic input[type=number]{width:84px;flex:none}
 .empty{text-align:center;padding:30px 10px}
+.folder{border:1px solid var(--line);border-radius:12px;margin-bottom:8px;padding:0 12px 10px;background:var(--bg)}
+.folder summary{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0;cursor:pointer;list-style:none;font-weight:600}
+.folder summary::-webkit-details-marker{display:none}
+.folder[open] summary{border-bottom:1px solid var(--line);margin-bottom:10px}
 </style>
 </head>
 <body>
@@ -284,9 +288,13 @@ function viewSettings(){
   </div></div>
 
   <div class="card"><h2>Themen (${S.topics.length})</h2>
-    ${S.topics.map(t=>`<div class="topic"><input value="${esc(t.name)}" onchange="editTopic('${t.id}','name',this.value)">
-      <input type="number" min="10" step="5" value="${t.min}" title="Minuten" onchange="editTopic('${t.id}','min',+this.value)"><span class="small muted">min</span>
-      <button class="btn danger" onclick="delTopic('${t.id}')" aria-label="Löschen">✕</button></div>`).join('') || '<p class="muted">Noch keine Themen.</p>'}
+    ${subjectFolders().map(f=>`<details class="folder" data-s="${esc(f.subject)}" ${openSubj.has(f.subject)?'open':''} ontoggle="toggleSubj(this)">
+      <summary><span class="fname">📁 ${esc(f.subject||'Ohne Fach')}</span><span class="small muted">${f.topics.length} ${f.topics.length===1?'Thema':'Themen'} ·${fmtMin(f.topics.reduce((a,t)=>a+t.min,0))}</span></summary>
+      ${f.topics.map(t=>`<div class="topic"><input value="${esc(t.rest)}" onchange="editTopicName('${t.id}',this.value)">
+        <input type="number" min="10" step="5" value="${t.min}" title="Minuten" onchange="editTopic('${t.id}','min',+this.value)"><span class="small muted">min</span>
+        <button class="btn danger" onclick="delTopic('${t.id}')" aria-label="Löschen">✕</button></div>`).join('')}
+      <button class="btn danger small" style="margin-top:6px" onclick="delSubject(this.closest('details').dataset.s)">Ordner mit allen Themen löschen</button>
+    </details>`).join('') || '<p class="muted">Noch keine Themen.</p>'}
     <h2 style="margin-top:18px">Themen einfügen</h2>
     <p class="small muted">Füge deinen Lernzettel ein – ein Thema pro Zeile. Optional mit Dauer: <code>Zellatmung; 60</code>. Aufzählungszeichen, Nummern und Markdown-Überschriften (#) werden entfernt. Standard: 45 min.</p>
     <textarea id="paste" placeholder="Zellatmung; 60&#10;Photosynthese&#10;Genetik; 90"></textarea>
@@ -329,6 +337,24 @@ function toggleFree(d){ const i=S.freeDays.indexOf(d); if(i>=0) S.freeDays.splic
 function selectDay(d){ selDay=d; render(); }
 function moveMonth(n){ calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+n,1); render(); }
 function editTopic(id,f,v){ const t=S.topics.find(t=>t.id===id); if(!t) return; if(f==='min') v=Math.max(10,v||45); else v=v.trim()||t.name; t[f]=v; save(); render(); }
+/* Fach = Text vor dem ersten ": " im Themennamen */
+let openSubj = new Set();
+function splitName(name){ const m = name.match(/^(.{1,40}?):\s+(.+)$/); return m ? {subject:m[1].trim(), rest:m[2]} : {subject:'', rest:name}; }
+function subjectFolders(){
+  const map = new Map();
+  for(const t of S.topics){ const {subject,rest} = splitName(t.name); if(!map.has(subject)) map.set(subject,[]); map.get(subject).push({...t,rest}); }
+  return [...map].map(([subject,topics])=>({subject,topics})).sort((a,b)=>(a.subject===''?1:0)-(b.subject===''?1:0));
+}
+function toggleSubj(el){ el.open ? openSubj.add(el.dataset.s) : openSubj.delete(el.dataset.s); }
+function editTopicName(id,v){
+  const t = S.topics.find(t=>t.id===id); v = v.trim(); if(!t || !v) return render();
+  const {subject} = splitName(t.name); t.name = subject ? `${subject}: ${v}` : v; save(); render();
+}
+function delSubject(s){
+  const n = S.topics.filter(t=>splitName(t.name).subject===s).length;
+  if(!confirm(`Ordner „${s||'Ohne Fach'}“ mit ${n} Themen löschen?`)) return;
+  S.topics = S.topics.filter(t=>splitName(t.name).subject!==s); save(); render();
+}
 function delTopic(id){ S.topics=S.topics.filter(t=>t.id!==id); save(); render(); }
 function clearTopics(){ if(confirm('Alle Themen löschen?')){ S.topics=[]; S.done={}; save(); render(); } }
 function resetAll(){ if(confirm('Alle Daten und den gesamten Plan zurücksetzen?')){ S={...defaults,topics:[],freeDays:[],done:{}}; save(); render(); } }
