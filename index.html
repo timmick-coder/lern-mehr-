@@ -76,6 +76,16 @@ button.btn.danger{color:var(--danger)}
 .modal{background:var(--card);color:var(--text);border-radius:16px;padding:16px;width:100%;max-width:380px;max-height:92vh;overflow:auto}
 .pcal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:8px 0}
 .pcal .dow{text-align:center;font-size:.7rem;color:var(--muted);font-weight:600}
+.exrow{margin-bottom:12px;cursor:pointer;padding:8px;margin-left:-8px;margin-right:-8px;border-radius:10px}
+.exrow:active,.exrow:hover{background:var(--bg)}
+.ov{width:100%;border-collapse:collapse;font-size:.85rem}
+.ov th{background:var(--free);text-align:left;padding:8px 6px;font-size:.75rem;border-bottom:2px solid var(--line)}
+.ov th:not(:first-child){text-align:center;width:54px}
+.ov td{padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+.ov td.c{text-align:center;line-height:1.2}
+.ck{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border:2px solid var(--muted);border-radius:5px;font-size:.8rem;font-weight:700}
+.ck.on{background:var(--ok);border-color:var(--ok);color:#fff}
+.ck.half{border-color:var(--ok);color:var(--ok)}
 .pd{font:inherit;font-size:.9rem;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:8px;padding:9px 0;cursor:pointer}
 .pd.off{opacity:.3;cursor:default;background:none}
 .pd.cur{border-style:dashed}
@@ -368,9 +378,9 @@ function overviewHtml(info){
 function examsHtml(){
   const today = todayIso(), exams = S.subjects.filter(s=>s.examDate).sort((a,b)=>a.examDate.localeCompare(b.examDate));
   if(!exams.length) return '';
-  return `<div class="card"><h2>Deine Prüfungen</h2>${exams.map(s=>{
+  return `<div class="card"><h2 style="margin-bottom:4px">Deine Prüfungen</h2><p class="small muted" style="margin:0 0 12px">Tippe auf ein Fach für den Überblick über alle Themen und Wiederholungen.</p>${exams.map(s=>{
     const dl = diffDays(today,s.examDate), p = subProgress(s);
-    return `<div style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><b>${esc(s.name)}</b>
+    return `<div class="exrow" onclick="openOverview('${s.id}')" role="button" tabindex="0"><div class="row" style="justify-content:space-between"><b>${esc(s.name)} ›</b>
       <span class="small muted">${fmt(s.examDate,{weekday:'short',day:'numeric',month:'short'})} · ${dl>0?`noch ${dl} ${dl===1?'Tag':'Tage'}`:dl===0?'heute':'vorbei'}</span></div>
       <div class="bar" style="margin-top:6px"><div style="width:${p}%;background:${hue(s.id)}"></div></div>
       <div class="small muted" style="margin-top:2px">${p}% geschafft</div></div>`;
@@ -520,7 +530,38 @@ function pickMonth(n){ picker.month = new Date(picker.month.getFullYear(), picke
 function pickDay(d){ picker.to = d; renderModal(); }
 function closePicker(){ picker = null; renderModal(); }
 function confirmPick(){ const {key,from,to} = picker; picker = null; renderModal(); moveTaskTo(key,from,to,false); }
-function renderModal(){ const el = document.getElementById('modal'); if(el) el.innerHTML = picker ? pickerHtml() : ''; }
+function renderModal(){ const el = document.getElementById('modal'); if(el) el.innerHTML = picker ? pickerHtml() : overview ? overviewModalHtml() : ''; }
+
+/* Überblick pro Fach: welches Thema wie oft gelernt/wiederholt wurde (wie die Lernplan-PDFs) */
+let overview = null;
+function openOverview(id){ overview = id; renderModal(); }
+function closeOverview(){ overview = null; renderModal(); }
+function overviewModalHtml(){
+  const sub = subOf(overview); if(!sub){ overview = null; return ''; }
+  const plan = computePlan(), where = {};                      // Aufgabe → {Tag, erledigt}
+  for(const [d,ts] of Object.entries(plan.days)) for(const t of ts) if(t.subjectId===sub.id) where[t.key] = {d, done:t.done};
+  const topics = S.topics.filter(t=>t.subjectId===sub.id), rounds = sub.repeats+1;
+  const short = d => fmt(d,{day:'numeric',month:'numeric'}).replace(/\s/g,'');
+  const cell = (t,r) => {
+    const sess = subjectSessions(sub).filter(s=>s.topicId===t.id && s.round===r);
+    if(!sess.length) return '<span class="muted">–</span>';
+    const info = sess.map(s=>where[s.key]).filter(Boolean), nDone = info.filter(i=>i.done).length;
+    if(nDone===sess.length) return `<span class="ck on">✓</span><div class="small muted">${short(info.map(i=>i.d).sort().pop())}</div>`;
+    const next = info.filter(i=>!i.done).map(i=>i.d).sort()[0];
+    return `<span class="ck ${nDone?'half':''}">${nDone?'½':''}</span>${next?`<div class="small muted">${short(next)}</div>`:''}`;
+  };
+  let doneN = 0; for(const t of topics) for(let r=0;r<rounds;r++){ const ss = subjectSessions(sub).filter(s=>s.topicId===t.id && s.round===r); if(ss.length && ss.every(s=>S.done[s.key])) doneN++; }
+  const total = topics.length*rounds;
+  return `<div class="modal-bg" onclick="if(event.target===this)closeOverview()"><div class="modal" style="max-width:560px">
+    <div class="row" style="justify-content:space-between;align-items:flex-start"><div><h2 style="margin:0">${esc(sub.name)}</h2>
+      <p class="small muted" style="margin:2px 0 10px">Jedes Thema ${rounds}× lernen${sub.examDate?` · Prüfung ${fmt(sub.examDate,{weekday:'short',day:'numeric',month:'long'})}`:''}</p></div>
+      <button class="btn" onclick="closeOverview()" aria-label="Schließen">✕</button></div>
+    <div class="bar"><div style="width:${total?Math.round(doneN/total*100):0}%;background:${hue(sub.id)}"></div></div>
+    <p class="small muted" style="margin:4px 0 10px">${doneN} von ${total} Durchgängen geschafft · Spalte 1 = Lernen, ab 2 = Wiederholungen · Datum = geplant bzw. erledigt am</p>
+    ${topics.length?`<div style="overflow-x:auto"><table class="ov"><thead><tr><th>THEMA</th>${Array.from({length:rounds},(_,r)=>`<th>${r+1}</th>`).join('')}</tr></thead>
+      <tbody>${topics.map(t=>`<tr><td>${esc(t.name)}</td>${Array.from({length:rounds},(_,r)=>`<td class="c">${cell(t,r)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:'<p class="muted">Noch keine Themen in diesem Fach.</p>'}
+  </div></div>`;
+}
 function pickerHtml(){
   const s = allSessions().find(x=>x.key===picker.key), sub = s && subOf(s.subjectId);
   if(!sub){ picker = null; return ''; }
