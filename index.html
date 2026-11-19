@@ -72,7 +72,7 @@ button.btn.danger{color:var(--danger)}
 .task button.tag{border:0;cursor:pointer;font:inherit;font-size:.75rem}
 .mvs{display:flex;gap:6px;flex:none}
 .pk{position:relative;display:inline-flex}
-.pk input{position:absolute;left:0;top:100%;width:100%;height:0;padding:0;border:0;opacity:0;pointer-events:none}
+.pk input{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;border:0;opacity:0;cursor:pointer;font-size:16px}
 @media(max-width:480px){.task{flex-wrap:wrap}.task .t{flex-basis:calc(100% - 40px)}.mvs{margin-left:34px}}
 .folder{border:1px solid var(--line);border-radius:12px;margin-bottom:8px;padding:0 12px 10px;background:var(--bg)}
 .folder summary{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 10px;padding:12px 0;cursor:pointer;list-style:none;font-weight:600}
@@ -298,8 +298,8 @@ function taskHtml(t,editable=true,day=''){
   const canMove = !t.done && day && day>=todayIso();
   const maxD = sub && sub.examDate ? addDays(sub.examDate,-1) : '';
   const mv = canMove ? `<span class="mvs"><button class="btn mv" onclick="moveTask('${t.key}','${day}')" title="Auf den nächsten Lerntag verschieben">${day===todayIso()?'Morgen':'Nächster Tag'} ›</button>
-    <span class="pk"><button class="btn mv" onclick="openPick(this)" title="Tag zum Verschieben wählen" aria-label="Tag wählen">📅</button>
-    <input type="date" min="${todayIso()}" ${maxD?`max="${maxD}"`:''} tabindex="-1" onchange="moveTaskTo('${t.key}','${day}',this.value)"></span></span>` : '';
+    <span class="pk"><span class="btn mv" aria-hidden="true">📅</span>
+    <input type="date" min="${todayIso()}" ${maxD?`max="${maxD}"`:''} title="Tag zum Verschieben wählen" aria-label="Tag zum Verschieben wählen" onclick="try{this.showPicker()}catch(e){}" onchange="moveTaskTo('${t.key}','${day}',this.value,true)"></span></span>` : '';
   const pinned = t.moved ? `<button class="tag" onclick="unmoveTask('${t.key}')" title="Verschiebung aufheben">verschoben ✕</button>` : '';
   const line = `${sub?esc(sub.name)+' · ':''}${roundLabel(t.round)}${t.parts>1?` · Teil ${t.part+1}/${t.parts}`:''} · ${fmtMin(t.min)}`;
   return `<label class="task ${t.done?'done':''}" style="--c:${hue(t.subjectId)}">
@@ -496,21 +496,20 @@ function toggleDone(key,day){ if(S.done[key]) delete S.done[key]; else { S.done[
 function moveTask(key,from){
   const s = allSessions().find(x=>x.key===key), sub = s && subOf(s.subjectId); if(!sub) return;
   let d = addDays(from,1); while(S.freeDays.includes(d)) d = addDays(d,1);
-  moveTaskTo(key,from,d);
+  moveTaskTo(key,from,d,false);          // „Nächster Tag“ ohne Rückfrage
 }
 /* Aufgabe auf einen frei gewählten Tag verschieben */
-function moveTaskTo(key,from,to){
+function moveTaskTo(key,from,to,ask=true){
   const s = allSessions().find(x=>x.key===key), sub = s && subOf(s.subjectId); if(!sub || !to) return;
   if(to===from) return render();
   if(!sub.examDate || diffDays(to,sub.examDate)<=0){ alert(`Dieser Tag geht nicht – die Prüfung ${sub.name} ist am ${sub.examDate?fmt(sub.examDate,{day:'numeric',month:'long'}):'(kein Datum)'}. Wähle einen Tag davor.`); return render(); }
   if(to<todayIso()){ alert('Du kannst nichts in die Vergangenheit verschieben.'); return render(); }
   if(S.freeDays.includes(to)){ alert('Dieser Tag ist lernfrei. Hebe das zuerst im Kalender auf.'); return render(); }
   const f = d => fmt(d,{weekday:'long',day:'numeric',month:'long'});
-  if(!confirm(`„${s.name}“ (${sub.name}) von ${f(from)} auf ${f(to)} verschieben?\n\nDer restliche Plan passt sich an.`)) return render();
+  if(ask && !confirm(`„${s.name}“ (${sub.name}) von ${f(from)} auf ${f(to)} verschieben?\n\nDer restliche Plan passt sich an.`)) return render();
   const prev = S.moves[key];
   S.moves[key] = { to, from:[...(prev?prev.from:[]), from].filter(x=>x!==to) }; save(); render();
 }
-function openPick(btn){ const i = btn.nextElementSibling; try{ i.showPicker ? i.showPicker() : i.click(); }catch(e){ i.click(); } }
 function unmoveTask(key){ delete S.moves[key]; save(); render(); }
 function toggleFree(d){ const i=S.freeDays.indexOf(d); if(i>=0) S.freeDays.splice(i,1); else S.freeDays.push(d); save(); render(); }
 function selectDay(d){ selDay=d; render(); }
