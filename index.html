@@ -86,6 +86,12 @@ button.btn.danger{color:var(--danger)}
 .ck{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border:2px solid var(--muted);border-radius:5px;font-size:.8rem;font-weight:700}
 .ck.on{background:var(--ok);border-color:var(--ok);color:#fff}
 .ck.half{border-color:var(--ok);color:var(--ok)}
+.tlist{margin:0 0 4px;padding-left:22px;color:var(--muted);font-size:.9rem}
+.tlist li{padding:2px 0}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:8px;vertical-align:-1px}
+.sw{display:flex;gap:8px;flex-wrap:wrap;padding-top:4px}
+.swb{width:28px;height:28px;border-radius:50%;border:3px solid transparent;cursor:pointer;padding:0}
+.swb.on{border-color:var(--text)}
 .pd{font:inherit;font-size:.9rem;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:8px;padding:9px 0;cursor:pointer}
 .pd.off{opacity:.3;cursor:default;background:none}
 .pd.cur{border-style:dashed}
@@ -112,6 +118,9 @@ const KEY = 'lernmehr-v1';
 const fresh = () => ({ subjects:[], topics:[], freeDays:[], done:{}, moves:{}, dayLimit:0, subjectsPerDay:2, unit:'tasks' });
 /* Gespeicherte Daten laden: „unit“ bewusst nicht vorbelegen, damit alte Zeit-Daten umgerechnet werden */
 const withDefaults = d => { const b = fresh(); delete b.unit; return Object.assign(b, d); };
+/* Deutlich unterscheidbare Fachfarben (funktionieren in hell und dunkel) */
+const PALETTE = ['#4f6df5','#f2a007','#2fb27a','#d63384','#9b59d0','#14b8c4','#f97316','#84a62a','#e5484d','#7c8599'];
+const nextColor = subjects => { const used = new Set(subjects.map(s=>s.color)); return PALETTE.find(c=>!used.has(c)) || PALETTE[subjects.length % PALETTE.length]; };
 let S = load();
 let page = 'today';
 let calMonth = new Date(); calMonth.setDate(1);
@@ -122,7 +131,7 @@ function newSubject(name, o={}){
 }
 function getSubject(name){
   let s = S.subjects.find(x=>x.name.toLowerCase()===name.toLowerCase());
-  if(!s){ s = newSubject(name); S.subjects.push(s); }
+  if(!s){ s = newSubject(name,{color:nextColor(S.subjects)}); S.subjects.push(s); }
   return s;
 }
 /* Alte Daten (ein Prüfungsdatum für alles, Fach als Vorsatz im Themennamen) in Fächer umwandeln */
@@ -141,6 +150,7 @@ function migrate(s){
     }
     if(s.subjects.length>1 && !s.dayLimit) s.dayLimit = s.minutes||0;   // bisherige Tageszeit wird zum Gesamtlimit
   }
+  for(const sub of s.subjects) if(!sub.color) sub.color = nextColor(s.subjects);      // jedes Fach bekommt eine eigene Farbe
   // Zeiteinheiten abschaffen: Minuten pro Tag → Aufgaben pro Tag (ca. 45 Minuten = 1 Aufgabe)
   if(s.unit !== 'tasks'){
     for(const sub of s.subjects){ if(sub.tasksPerDay === undefined) sub.tasksPerDay = Math.max(1, Math.round((+sub.minutes||60)/45)); delete sub.minutes; }
@@ -152,7 +162,10 @@ function migrate(s){
 }
 function load(){
   try{ return migrate(withDefaults(JSON.parse(localStorage.getItem(KEY)||'{}'))); }
-  catch(e){ return fresh(); }
+  catch(e){   // Fehler beim Laden: Rohdaten sichern, damit beim nächsten Speichern nichts verloren geht
+    try{ const raw = localStorage.getItem(KEY); if(raw) localStorage.setItem(KEY+'-backup', raw); }catch(_){}
+    return fresh();
+  }
 }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
 
@@ -165,7 +178,8 @@ const todayIso = () => iso(new Date());
 const diffDays = (a,b) => Math.round((parse(b)-parse(a))/864e5);
 const fmt = (s,o) => parse(s).toLocaleDateString('de-DE',o);
 const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const hue = id => { let h=0; for(const c of String(id)) h=(h*31+c.charCodeAt(0))%360; return `hsl(${h} 65% 55%)`; };
+/* Farbe eines Fachs (Parameter = Fach-ID); Ersatzfarbe, falls keine gesetzt ist */
+const hue = id => { const s = S.subjects.find(x=>x.id===id); if(s && s.color) return s.color; let h=0; for(const c of String(id)) h=(h*31+c.charCodeAt(0))%360; return `hsl(${h} 65% 55%)`; };
 const nAufg = n => `${n} ${n===1?'Aufgabe':'Aufgaben'}`;
 
 /* ---------- Planung ---------- */
@@ -440,21 +454,27 @@ function viewSettings(){
     const dl = sub.examDate ? diffDays(today,sub.examDate) : null;
     const exam = sub.examDate ? `Prüfung ${fmt(sub.examDate,{day:'numeric',month:'short'})}${dl>0?` · noch ${dl} T.`:dl===0?' · heute':' · vorbei'}` : 'kein Prüfungsdatum';
     return `<details class="folder" data-s="${sub.id}" ${openSubj.has(sub.id)?'open':''} ontoggle="toggleSubj(this)">
-      <summary><span class="fname">📁 ${esc(sub.name)}</span><span class="small muted">${exam} · ${ts.length} ${ts.length===1?'Thema':'Themen'}</span></summary>
+      <summary><span class="fname"><span class="dot" style="background:${hue(sub.id)}"></span>${esc(sub.name)}</span><span class="small muted">${exam} · ${ts.length} ${ts.length===1?'Thema':'Themen'}</span></summary>
       <div class="grid" style="margin-bottom:14px">
         <label class="f">Name<input value="${esc(sub.name)}" onchange="setSub('${sub.id}','name',this.value)"></label>
         <label class="f">Prüfungsdatum<input type="date" value="${sub.examDate}" onchange="setSub('${sub.id}','examDate',this.value)"></label>
         <label class="f">Themen pro Tag<input type="number" min="1" step="1" value="${subBudget(sub)}" onchange="setSub('${sub.id}','tasksPerDay',this.value)">
           <span class="small muted">höchstens so viele Themen pro Tag (Lernen oder Wiederholen)</span></label>
+        <div class="f">Farbe<div class="sw">${PALETTE.map(c=>`<button class="swb ${hue(sub.id)===c?'on':''}" style="background:${c}" onclick="setSub('${sub.id}','color','${c}')" aria-label="Farbe wählen"></button>`).join('')}</div></div>
         <label class="f">Wiederholungen
           <select onchange="setSub('${sub.id}','repeats',+this.value)">${[0,1,2,3,4,5].map(n=>`<option value="${n}" ${sub.repeats===n?'selected':''}>${n===0?'keine':n+'×'}</option>`).join('')}</select></label>
         <label class="f">Lernverlauf
           <select onchange="setSub('${sub.id}','ramp',this.value)">${Object.entries(RAMP_LABEL).map(([k,v])=>`<option value="${k}" ${sub.ramp===k?'selected':''}>${v}</option>`).join('')}</select>
           <span class="small muted">„Steigend“: je näher die Prüfung, desto mehr pro Tag</span></label>
       </div>
-      ${ts.map(t=>`<div class="topic"><input value="${esc(t.name)}" onchange="editTopic('${t.id}','name',this.value)">
-        <button class="btn danger" onclick="delTopic('${t.id}')" aria-label="Löschen">✕</button></div>`).join('') || '<p class="muted small">Noch keine Themen in diesem Fach.</p>'}
-      <button class="btn danger" style="margin-top:8px" onclick="delSubject('${sub.id}')">Fach mit allen Themen löschen</button>
+      ${editTopics.has(sub.id)
+        ? ts.map(t=>`<div class="topic"><input value="${esc(t.name)}" onchange="editTopic('${t.id}','name',this.value)">
+            <button class="btn danger" onclick="delTopic('${t.id}')" aria-label="Löschen">✕</button></div>`).join('')
+        : (ts.length ? `<ol class="tlist">${ts.map(t=>`<li>${esc(t.name)}</li>`).join('')}</ol>` : '')}
+      ${ts.length ? '' : '<p class="muted small">Noch keine Themen in diesem Fach.</p>'}
+      <div class="row" style="margin-top:8px">
+        ${ts.length ? `<button class="btn" onclick="toggleEditTopics('${sub.id}')">${editTopics.has(sub.id)?'Fertig':'Themen bearbeiten'}</button>` : ''}
+        <button class="btn danger" onclick="delSubject('${sub.id}')">Fach mit allen Themen löschen</button></div>
     </details>`;
   }).join('');
   const subjList = `<datalist id="subjList">${S.subjects.map(s=>`<option value="${esc(s.name)}">`).join('')}</datalist>`;
@@ -509,7 +529,8 @@ function viewSettings(){
 }
 
 /* ---------- Aktionen ---------- */
-let openSubj = new Set();
+let openSubj = new Set(), editTopics = new Set();
+function toggleEditTopics(id){ editTopics.has(id) ? editTopics.delete(id) : editTopics.add(id); render(); }
 function go(p){ page=p; render(); }
 /* Abhaken: die Aufgabe bleibt an dem Tag stehen, an dem sie geplant war (auch im Voraus erledigt) */
 function toggleDone(key,day){ if(S.done[key]) delete S.done[key]; else { S.done[key]=day||todayIso(); delete S.moves[key]; } save(); render(); }
