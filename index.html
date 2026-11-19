@@ -44,7 +44,8 @@ button.btn.danger{color:var(--danger)}
 .stat{flex:1;min-width:110px;background:var(--bg);border-radius:12px;padding:10px 12px}
 .stat b{display:block;font-size:1.3rem}
 .task{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;border-left:6px solid var(--c,var(--accent))}
-.task input{width:22px;height:22px;flex:none;accent-color:var(--ok)}
+.task .tl{display:flex;align-items:center;gap:12px;flex:1;min-width:0;cursor:pointer}
+.task input[type=checkbox]{width:22px;height:22px;flex:none;accent-color:var(--ok)}
 .task .t{flex:1;min-width:0}
 .task .t div:first-child{font-weight:600}
 .task.done .t div:first-child{text-decoration:line-through;color:var(--muted)}
@@ -72,8 +73,10 @@ button.btn.danger{color:var(--danger)}
 .task button.tag{border:0;cursor:pointer;font:inherit;font-size:.75rem}
 .mvs{display:flex;gap:6px;flex:none}
 .pk{position:relative;display:inline-flex}
-.pk input{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;border:0;opacity:0;cursor:pointer;font-size:16px}
-@media(max-width:480px){.task{flex-wrap:wrap}.task .t{flex-basis:calc(100% - 40px)}.mvs{margin-left:34px}}
+.pk span.btn{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:10px;padding:6px 10px;display:inline-flex;align-items:center}
+.pk input[type=date]{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;border:0;opacity:0;cursor:pointer;font-size:16px;overflow:hidden}
+.pk input[type=date]::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;opacity:0;cursor:pointer}
+@media(max-width:480px){.task{flex-wrap:wrap}.task .tl{flex-basis:100%}.mvs{margin-left:34px}}
 .folder{border:1px solid var(--line);border-radius:12px;margin-bottom:8px;padding:0 12px 10px;background:var(--bg)}
 .folder summary{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 10px;padding:12px 0;cursor:pointer;list-style:none;font-weight:600}
 .folder summary::-webkit-details-marker{display:none}
@@ -299,14 +302,17 @@ function taskHtml(t,editable=true,day=''){
   const maxD = sub && sub.examDate ? addDays(sub.examDate,-1) : '';
   const mv = canMove ? `<span class="mvs"><button class="btn mv" onclick="moveTask('${t.key}','${day}')" title="Auf den nächsten Lerntag verschieben">${day===todayIso()?'Morgen':'Nächster Tag'} ›</button>
     <span class="pk"><span class="btn mv" aria-hidden="true">📅</span>
-    <input type="date" min="${todayIso()}" ${maxD?`max="${maxD}"`:''} title="Tag zum Verschieben wählen" aria-label="Tag zum Verschieben wählen" onclick="try{this.showPicker()}catch(e){}" onchange="moveTaskTo('${t.key}','${day}',this.value,true)"></span></span>` : '';
+    <input type="date" min="${todayIso()}" ${maxD?`max="${maxD}"`:''} title="Tag zum Verschieben wählen" aria-label="Tag zum Verschieben wählen" onclick="if(navigator.userAgent.includes('Firefox')&&this.showPicker)try{this.showPicker()}catch(e){}" onchange="moveTaskTo('${t.key}','${day}',this.value,true)"></span></span>` : '';
   const pinned = t.moved ? `<button class="tag" onclick="unmoveTask('${t.key}')" title="Verschiebung aufheben">verschoben ✕</button>` : '';
   const line = `${sub?esc(sub.name)+' · ':''}${roundLabel(t.round)}${t.parts>1?` · Teil ${t.part+1}/${t.parts}`:''} · ${fmtMin(t.min)}`;
-  return `<label class="task ${t.done?'done':''}" style="--c:${hue(t.subjectId)}">
-    ${editable?`<input type="checkbox" ${t.done?'checked':''} onchange="toggleDone('${t.key}','${day||todayIso()}')">`:''}
-    <div class="t"><div>${esc(t.name)}</div><div class="small muted">${line}</div></div>
+  // Buttons und Datumsfeld liegen außerhalb des Labels, sonst löst ein Tipp darauf das Abhaken (und ein Neuzeichnen) aus
+  return `<div class="task ${t.done?'done':''}" style="--c:${hue(t.subjectId)}">
+    <label class="tl">
+      ${editable?`<input type="checkbox" ${t.done?'checked':''} onchange="toggleDone('${t.key}','${day||todayIso()}')">`:''}
+      <div class="t"><div>${esc(t.name)}</div><div class="small muted">${line}</div></div>
+    </label>
     ${t.over?'<span class="tag over">Zu wenig Zeit</span>':''}${pinned}${mv}
-  </label>`;
+  </div>`;
 }
 
 function subProgress(sub){
