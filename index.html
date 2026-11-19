@@ -68,6 +68,9 @@ button.btn.danger{color:var(--danger)}
 .topic{display:flex;gap:8px;align-items:center;margin-bottom:6px}
 .topic input[type=number]{width:84px;flex:none}
 .empty{text-align:center;padding:30px 10px}
+.task .mv{flex:none;padding:6px 10px;font-size:.8rem;white-space:nowrap}
+.task button.tag{border:0;cursor:pointer;font:inherit;font-size:.75rem}
+@media(max-width:480px){.task{flex-wrap:wrap}.task .t{flex-basis:calc(100% - 40px)}.task .mv{margin-left:34px}}
 .folder{border:1px solid var(--line);border-radius:12px;margin-bottom:8px;padding:0 12px 10px;background:var(--bg)}
 .folder summary{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 10px;padding:12px 0;cursor:pointer;list-style:none;font-weight:600}
 .folder summary::-webkit-details-marker{display:none}
@@ -85,7 +88,7 @@ button.btn.danger{color:var(--danger)}
 <script>
 /* ---------- Zustand ---------- */
 const KEY = 'lernmehr-v1';
-const fresh = () => ({ subjects:[], topics:[], freeDays:[], done:{}, dayLimit:0 });
+const fresh = () => ({ subjects:[], topics:[], freeDays:[], done:{}, moves:{}, dayLimit:0 });
 let S = load();
 let page = 'today';
 let calMonth = new Date(); calMonth.setDate(1);
@@ -101,7 +104,7 @@ function getSubject(name){
 }
 /* Alte Daten (ein Prüfungsdatum für alles, Fach als Vorsatz im Themennamen) in Fächer umwandeln */
 function migrate(s){
-  s.subjects ||= []; s.topics ||= []; s.freeDays ||= []; s.done ||= {}; s.dayLimit = +s.dayLimit || 0;
+  s.subjects ||= []; s.topics ||= []; s.freeDays ||= []; s.done ||= {}; s.moves ||= {}; s.dayLimit = +s.dayLimit || 0;
   const legacy = s.topics.some(t=>!t.subjectId);
   if(legacy){
     for(const t of s.topics){
@@ -191,7 +194,18 @@ function computePlan(){
   // Tag für Tag verteilen; fullSet = Fächer, die voll auslasten müssen (sonst reicht die Zeit nicht)
   const run = fullSet => {
     const out = {}, q = {}, rest = {};
-    for(const p of plans){ q[p.sub.id] = p.pending.slice(); rest[p.sub.id] = p.pending.reduce((a,s)=>a+s.min,0); }
+    const pins = {}, away = {};                           // vom Nutzer verschobene Aufgaben: fester Tag / entlasteter Tag
+    for(const p of plans){
+      const id = p.sub.id; q[id] = []; pins[id] = {}; away[id] = {};
+      for(const s of p.pending){
+        const mv = S.moves[s.key];
+        if(mv && p.avail.includes(mv.to)){
+          (pins[id][mv.to] ||= []).push(s);
+          for(const f of mv.from) away[id][f] = (away[id][f]||0) + s.min;   // am alten Tag nicht wieder auffüllen
+        } else q[id].push(s);
+      }
+      rest[id] = p.pending.reduce((a,s)=>a+s.min,0);
+    }
     for(const d of dayList){
       let globalLeft = limit>0 ? limit-(d===today?doneTodayAll:0) : Infinity;
       const active = plans.filter(p=>p.avail.includes(d)).sort((a,b)=>a.sub.examDate.localeCompare(b.sub.examDate));
@@ -205,9 +219,12 @@ function computePlan(){
           target = Math.min(cap, Math.ceil(rest[id]*w(i)/sumW));
         }
         let used = 0;
+        for(const s of (pins[id][d]||[])){ (out[d] ||= []).push({...s,done:false,moved:true}); used += s.min; rest[id] -= s.min; }
+        const lighter = away[id][d] || 0;
+        if(lighter){ target -= lighter; if(target<=0){ globalLeft -= used; continue; } }
         while(q[id].length){
           const s = q[id][0];
-          const fits = used===0 ? s.min<=cap : used+s.min <= Math.min(cap, target+10);
+          const fits = (used===0 && !lighter) ? s.min<=cap : used+s.min <= Math.min(cap, target+10);
           if(!fits) break;
           (out[d] ||= []).push({...s,done:false}); used += s.min; rest[id] -= s.min; q[id].shift();
         }
@@ -255,13 +272,16 @@ function setupHint(){
     <button class="btn primary" onclick="go('set')">Zu den Einstellungen</button></div>`;
 }
 
-function taskHtml(t,editable=true){
+function taskHtml(t,editable=true,day=''){
   const sub = subOf(t.subjectId);
+  const canMove = !t.done && day && day>=todayIso();
+  const mv = canMove ? `<button class="btn mv" onclick="moveTask('${t.key}','${day}')" title="Auf den nächsten Lerntag verschieben">${day===todayIso()?'Morgen':'Nächster Tag'} ›</button>` : '';
+  const pinned = t.moved ? `<button class="tag" onclick="unmoveTask('${t.key}')" title="Verschiebung aufheben">verschoben ✕</button>` : '';
   const line = `${sub?esc(sub.name)+' · ':''}${roundLabel(t.round)}${t.parts>1?` · Teil ${t.part+1}/${t.parts}`:''} · ${fmtMin(t.min)}`;
   return `<label class="task ${t.done?'done':''}" style="--c:${hue(t.subjectId)}">
     ${editable?`<input type="checkbox" ${t.done?'checked':''} onchange="toggleDone('${t.key}')">`:''}
     <div class="t"><div>${esc(t.name)}</div><div class="small muted">${line}</div></div>
-    ${t.over?'<span class="tag over">Zu wenig Zeit</span>':''}
+    ${t.over?'<span class="tag over">Zu wenig Zeit</span>':''}${pinned}${mv}
   </label>`;
 }
 
@@ -289,7 +309,7 @@ function viewToday(plan){
   else if(!tasks.length) body = `<div class="card empty"><h2>Für heute ist nichts geplant ✅</h2><p class="muted">${info.pendingMin?'Die nächsten Aufgaben findest du im Kalender.':'Du hast alles geschafft!'}</p></div>`;
   else body = `<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:10px">
       <h2 style="margin:0">Heute zu erledigen</h2><span class="muted small">${fmtMin(todayDone)} / ${fmtMin(todayMin)}</span></div>
-      ${tasks.map(t=>taskHtml(t)).join('')}
+      ${tasks.map(t=>taskHtml(t,true,today)).join('')}
       <button class="btn" style="margin-top:6px" onclick="toggleFree('${today}')">Heute lernfrei machen</button></div>`;
 
   const exams = S.subjects.filter(s=>s.examDate).sort((a,b)=>a.examDate.localeCompare(b.examDate));
@@ -352,7 +372,7 @@ function dayDetail(plan){
   return `<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">${fmt(selDay,{weekday:'long',day:'numeric',month:'long'})}</h2>
     ${canToggle?`<button class="btn ${free?'':'danger'}" onclick="toggleFree('${selDay}')">${free?'Lernfrei aufheben':'Lernfrei machen'}</button>`:''}</div>
     ${ex.length?`<p>Prüfung: <b>${ex.map(esc).join(', ')}</b> 🍀</p>`:''}
-    ${free?'<p class="muted">Lernfreier Tag – keine Aufgaben.</p>':tasks.length?tasks.map(t=>taskHtml(t,selDay<=today)).join(''):(ex.length?'':'<p class="muted">Keine Aufgaben an diesem Tag.</p>')}</div>`;
+    ${free?'<p class="muted">Lernfreier Tag – keine Aufgaben.</p>':tasks.length?tasks.map(t=>taskHtml(t,selDay<=today,selDay)).join(''):(ex.length?'':'<p class="muted">Keine Aufgaben an diesem Tag.</p>')}</div>`;
 }
 
 function viewSettings(){
@@ -430,7 +450,16 @@ function viewSettings(){
 /* ---------- Aktionen ---------- */
 let openSubj = new Set();
 function go(p){ page=p; render(); }
-function toggleDone(key){ if(S.done[key]) delete S.done[key]; else S.done[key]=todayIso(); save(); render(); }
+function toggleDone(key){ if(S.done[key]) delete S.done[key]; else { S.done[key]=todayIso(); delete S.moves[key]; } save(); render(); }
+/* Aufgabe auf den nächsten Lerntag verschieben – der restliche Plan verteilt sich neu */
+function moveTask(key,from){
+  const s = allSessions().find(x=>x.key===key), sub = s && subOf(s.subjectId); if(!sub) return;
+  let d = addDays(from,1); while(S.freeDays.includes(d)) d = addDays(d,1);
+  if(!sub.examDate || diffDays(d,sub.examDate)<=0){ alert(`Weiter verschieben geht nicht – die Prüfung ${sub.name} ist am ${fmt(sub.examDate,{day:'numeric',month:'long'})}.`); return; }
+  const prev = S.moves[key];
+  S.moves[key] = { to:d, from:[...(prev?prev.from:[]), from] }; save(); render();
+}
+function unmoveTask(key){ delete S.moves[key]; save(); render(); }
 function toggleFree(d){ const i=S.freeDays.indexOf(d); if(i>=0) S.freeDays.splice(i,1); else S.freeDays.push(d); save(); render(); }
 function selectDay(d){ selDay=d; render(); }
 function moveMonth(n){ calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+n,1); render(); }
