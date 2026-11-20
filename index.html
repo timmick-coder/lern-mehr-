@@ -528,11 +528,6 @@ function viewSettings(){
     <label class="f">Wann zeigen?
       <select onchange="setGifMode(this.value)"><option value="each" ${gifCfg.mode==='each'?'selected':''}>Bei jedem abgehakten Thema</option><option value="end" ${gifCfg.mode==='end'?'selected':''}>Nur wenn alles für heute geschafft ist</option></select></label></div>
 
-  <div class="card"><h2>Lernfreie Tage (${S.freeDays.length})</h2>
-    <p class="small muted">Im Kalender antippen, um Tage lernfrei zu markieren.</p>
-    ${S.freeDays.length?S.freeDays.sort().map(d=>`<span class="tag" style="margin:2px">${fmt(d,{weekday:'short',day:'numeric',month:'short'})} <a href="#" onclick="toggleFree('${d}');return false">✕</a></span>`).join(''):''}
-  </div>
-
   <div class="card"><h2>Sichern &amp; übertragen</h2>
     <p class="small muted">Exportiere deinen Plan als Datei, um ihn zu sichern oder auf ein anderes Gerät oder einen anderen Browser zu übertragen.</p>
     <div class="row"><button class="btn primary" onclick="exportData()">Exportieren</button>
