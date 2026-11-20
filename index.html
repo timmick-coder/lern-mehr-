@@ -103,8 +103,8 @@ button.btn.danger{color:var(--danger)}
 .modal{background:var(--card);color:var(--text);border-radius:16px;padding:16px;width:100%;max-width:380px;max-height:92vh;overflow:auto}
 .pcal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:8px 0}
 .pcal .dow{text-align:center;font-size:.7rem;color:var(--muted);font-weight:600}
-.exrow{margin-bottom:12px;cursor:pointer;padding:8px;margin-left:-8px;margin-right:-8px;border-radius:10px}
-.exrow:active,.exrow:hover{background:var(--bg)}
+.exrow{margin-bottom:8px;cursor:pointer;padding:10px 12px;border-radius:10px;border-left:6px solid var(--c,var(--accent));background:color-mix(in srgb,var(--c,var(--accent)) 16%,transparent)}
+.exrow:active,.exrow:hover{background:color-mix(in srgb,var(--c,var(--accent)) 26%,transparent)}
 .ov{width:100%;border-collapse:collapse;font-size:.85rem}
 .ov th{background:var(--free);text-align:left;padding:8px 6px;font-size:.75rem;border-bottom:2px solid var(--line)}
 .ov th:not(:first-child){text-align:center;width:54px}
@@ -421,7 +421,7 @@ function examsHtml(){
   if(!exams.length) return '';
   return `<div class="card"><h2 style="margin-bottom:4px">Deine Prüfungen</h2><p class="small muted" style="margin:0 0 12px">Tippe auf ein Fach für den Überblick über alle Themen und Wiederholungen.</p>${exams.map(s=>{
     const dl = diffDays(today,s.examDate), p = subProgress(s);
-    return `<div class="exrow" onclick="openOverview('${s.id}')" role="button" tabindex="0"><div class="row" style="justify-content:space-between"><b>${esc(s.name)} ›</b>
+    return `<div class="exrow" style="--c:${hue(s.id)}" onclick="openOverview('${s.id}')" role="button" tabindex="0"><div class="row" style="justify-content:space-between"><b>${esc(s.name)} ›</b>
       <span class="small muted">${fmt(s.examDate,{weekday:'short',day:'numeric',month:'short'})} · ${dl>0?`noch ${dl} ${dl===1?'Tag':'Tage'}`:dl===0?'heute':'vorbei'}</span></div>
       <div class="bar" style="margin-top:6px"><div style="width:${p}%;background:${hue(s.id)}"></div></div>
       <div class="small muted" style="margin-top:2px">${p}% geschafft</div></div>`;
