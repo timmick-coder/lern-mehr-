@@ -69,6 +69,26 @@ button.btn.danger{color:var(--danger)}
 .topic{display:flex;gap:8px;align-items:center;margin-bottom:6px}
 .topic input[type=number]{width:84px;flex:none}
 .empty{text-align:center;padding:30px 10px}
+.task.cheer{animation:taskflash .9s ease-out}
+.task.cheer input[type=checkbox]{animation:cbpop .55s cubic-bezier(.3,1.8,.5,1)}
+@keyframes taskflash{0%{background:color-mix(in srgb,var(--ok) 38%,var(--card))}100%{background:transparent}}
+@keyframes cbpop{0%{transform:scale(.4)}60%{transform:scale(1.6)}100%{transform:scale(1)}}
+.confetti{position:fixed;left:0;top:0;z-index:90;width:8px;height:12px;border-radius:2px;pointer-events:none;
+  transform:translate(var(--x),var(--y));animation:confetti var(--t,1s) cubic-bezier(.2,.6,.3,1) forwards}
+@keyframes confetti{
+  0%{transform:translate(var(--x),var(--y)) rotate(0deg);opacity:1}
+  35%{transform:translate(calc(var(--x) + var(--dx)*.8),calc(var(--y) + var(--up))) rotate(calc(var(--rot)*.4));opacity:1}
+  100%{transform:translate(calc(var(--x) + var(--dx)),calc(var(--y) + var(--down))) rotate(var(--rot));opacity:0}}
+.gifpop{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);z-index:95;background:var(--card);padding:6px;border-radius:16px;
+  box-shadow:0 8px 30px rgba(0,0,0,.3);animation:gifin .35s cubic-bezier(.3,1.5,.5,1);cursor:pointer;transition:opacity .45s,transform .45s}
+.gifpop.out{opacity:0;transform:translateX(-50%) translateY(14px)}
+.gifpop img{display:block;max-width:min(78vw,340px);max-height:40vh;border-radius:12px}
+.ggrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-height:50vh;overflow:auto}
+.gcell{border:0;padding:0;border-radius:10px;overflow:hidden;background:var(--bg);cursor:pointer;aspect-ratio:1;display:block}
+.gcell img{width:100%;height:100%;object-fit:cover;display:block}
+.gifprev{max-width:100%;max-height:140px;border-radius:12px;display:block}
+@keyframes gifin{0%{opacity:0;transform:translateX(-50%) scale(.6)}100%{opacity:1;transform:translateX(-50%) scale(1)}}
+@media (prefers-reduced-motion:reduce){.task.cheer,.task.cheer input[type=checkbox]{animation:none}.confetti{display:none}.gifpop{display:none}}
 .task .mv{flex:none;padding:6px 10px;font-size:.8rem;white-space:nowrap}
 .task button.tag{border:0;cursor:pointer;font:inherit;font-size:.75rem}
 .mvs{display:flex;gap:6px;flex:none}
@@ -312,6 +332,7 @@ function render(){
   app.innerHTML = page==='today' ? viewToday(plan) : page==='cal' ? viewCal(plan) : viewSettings();
   renderModal();
   window.scrollTo(0,0 + (page==='cal'?window.scrollY:0));
+  if(celebrate){ const k = celebrate; celebrate = null; requestAnimationFrame(()=>cheer(k)); }
 }
 
 const ready = () => S.topics.length && S.subjects.some(s=>s.examDate);
@@ -332,7 +353,7 @@ function taskHtml(t,editable=true,day=''){
   const pinned = t.moved ? `<button class="tag" onclick="unmoveTask('${t.key}')" title="Verschiebung aufheben">verschoben ✕</button>` : '';
   const line = `${sub?esc(sub.name)+' · ':''}${roundLabel(t.round)}`;
   // Buttons und Datumsfeld liegen außerhalb des Labels, sonst löst ein Tipp darauf das Abhaken (und ein Neuzeichnen) aus
-  return `<div class="task ${t.done?'done':''}" style="--c:${hue(t.subjectId)}">
+  return `<div class="task ${t.done?'done':''}" data-key="${t.key}" style="--c:${hue(t.subjectId)}">
     <label class="tl">
       ${editable?`<input type="checkbox" ${t.done?'checked':''} onchange="toggleDone('${t.key}','${day||todayIso()}')">`:''}
       <div class="t"><div>${esc(t.name)}</div><div class="small muted">${line}</div></div>
@@ -369,6 +390,7 @@ function viewToday(plan){
   return `<h1>Heute</h1><p class="muted">${fmt(today,{weekday:'long',day:'numeric',month:'long'})}</p>
     ${exToday.length?`<div class="notice ok">Heute Prüfung: <b>${exToday.map(esc).join(', ')}</b> – viel Erfolg! 🍀</div>`:''}
     ${stats}
+    ${tasks.length && nDone===tasks.length ? '<div class="notice ok" style="text-align:center"><b>Alles für heute geschafft! 🎉</b><br><span class="small">Richtig stark – gönn dir eine Pause.</span></div>' : ''}
     ${body}`;
 }
 
@@ -481,6 +503,18 @@ function viewSettings(){
       <select onchange="setPerDay(+this.value)">${[[0,'Alle Fächer jeden Tag'],[1,'1 Fach pro Tag'],[2,'Bis zu 2 Fächer pro Tag'],[3,'Bis zu 3 Fächer pro Tag'],[4,'Bis zu 4 Fächer pro Tag']].map(([v,l])=>`<option value="${v}" ${(+S.subjectsPerDay||0)===v?'selected':''}>${l}</option>`).join('')}</select>
       <span class="small muted">Die Fächer wechseln sich ab. Jeden Tag kommen die dringendsten dran, die anderen bekommen dafür an ihren Tagen mehr.</span></label></div>
 
+  <div class="card"><h2>Belohnungs-GIF</h2>
+    <p class="small muted" style="margin:0 0 10px">Wähle ein GIF, das beim Abhaken eines Themas kurz erscheint – ${GIPHY_KEY ? 'per Suche, ' : ''}als Datei oder per Link. Deine Auswahl bleibt nur auf diesem Gerät gespeichert.</p>
+    ${gifCfg.src ? `<img class="gifprev" src="${esc(gifCfg.src)}" alt="Vorschau">` : '<p class="muted small">Noch kein GIF gewählt.</p>'}
+    <div class="row" style="margin:10px 0">
+      ${GIPHY_KEY ? '<button class="btn primary" onclick="openGifSearch()">GIF suchen</button>' : ''}
+      <button class="btn ${GIPHY_KEY?'':'primary'}" onclick="document.getElementById('gfile').click()">Datei wählen</button>
+      <button class="btn" onclick="pickGifLink()">Link einfügen</button>
+      ${gifCfg.src ? `<button class="btn" onclick="showGif()">Testen</button><button class="btn danger" onclick="removeGif()">Entfernen</button>` : ''}
+      <input type="file" id="gfile" accept="image/gif,image/*" hidden onchange="pickGifFile(this.files[0])"></div>
+    <label class="f">Wann zeigen?
+      <select onchange="setGifMode(this.value)"><option value="each" ${gifCfg.mode==='each'?'selected':''}>Bei jedem abgehakten Thema</option><option value="end" ${gifCfg.mode==='end'?'selected':''}>Nur wenn alles für heute geschafft ist</option></select></label></div>
+
   <div class="card"><h2>Lernfreie Tage (${S.freeDays.length})</h2>
     <p class="small muted">Im Kalender antippen, um Tage lernfrei zu markieren.</p>
     ${S.freeDays.length?S.freeDays.sort().map(d=>`<span class="tag" style="margin:2px">${fmt(d,{weekday:'short',day:'numeric',month:'short'})} <a href="#" onclick="toggleFree('${d}');return false">✕</a></span>`).join(''):''}
@@ -501,7 +535,108 @@ function pickColor(id,c){ openColors.delete(id); setSub(id,'color',c); }       /
 function toggleTopics(el){ el.open ? openTopics.add(el.dataset.s) : openTopics.delete(el.dataset.s); }
 function go(p){ page=p; render(); }
 /* Abhaken: die Aufgabe bleibt an dem Tag stehen, an dem sie geplant war (auch im Voraus erledigt) */
-function toggleDone(key,day){ if(S.done[key]) delete S.done[key]; else { S.done[key]=day||todayIso(); delete S.moves[key]; } save(); render(); }
+function toggleDone(key,day){
+  if(S.done[key]) delete S.done[key]; else { S.done[key]=day||todayIso(); delete S.moves[key]; celebrate = key; }
+  save(); render();
+}
+
+/* ---------- Belohnungs-GIF (eigene Datei oder Link, getrennt vom Plan gespeichert) ---------- */
+const GIFKEY = 'lernmehr-gif';
+let gifCfg = (() => { try{ return Object.assign({src:'',mode:'each'}, JSON.parse(localStorage.getItem(GIFKEY)||'{}')); }catch(e){ return {src:'',mode:'each'}; } })();
+function saveGif(){ try{ localStorage.setItem(GIFKEY, JSON.stringify(gifCfg)); return true; }catch(e){ return false; } }
+function pickGifFile(file){
+  if(!file) return;
+  if(!file.type.startsWith('image/')){ alert('Bitte wähle ein GIF oder ein Bild.'); return; }
+  if(file.size > 3*1024*1024){ alert('Die Datei ist zu groß (maximal 3 MB). Nimm ein kleineres GIF oder füge einen Link ein.'); return; }
+  const r = new FileReader();
+  r.onload = () => { const old = gifCfg.src; gifCfg.src = r.result; if(!saveGif()){ gifCfg.src = old; alert('Das GIF konnte nicht gespeichert werden (Speicher voll). Nimm ein kleineres GIF oder füge einen Link ein.'); } render(); };
+  r.readAsDataURL(file);
+}
+function pickGifLink(){
+  const url = (prompt('Link zum GIF einfügen (https://…):', gifCfg.src.startsWith('http') ? gifCfg.src : '') || '').trim();
+  if(!url) return;
+  if(!/^https?:\/\//i.test(url)){ alert('Der Link muss mit https:// beginnen.'); return; }
+  gifCfg.src = url; saveGif(); render();
+}
+function removeGif(){ gifCfg.src = ''; saveGif(); render(); }
+function setGifMode(m){ gifCfg.mode = m; saveGif(); render(); }
+function showGif(){
+  if(!gifCfg.src || reducedMotion()) return;
+  document.querySelectorAll('.gifpop').forEach(e=>e.remove());
+  const box = document.createElement('div'); box.className = 'gifpop'; box.onclick = () => box.remove();
+  const img = new Image(); img.alt = ''; img.onerror = () => box.remove(); img.src = gifCfg.src;
+  box.appendChild(img); document.body.appendChild(box);
+  setTimeout(()=>box.classList.add('out'), 2600); setTimeout(()=>box.remove(), 3100);
+}
+
+/* ---------- GIF-Suche über Giphy (eigener API-Schlüssel, nur auf diesem Gerät gespeichert) ---------- */
+/* Den kostenlosen Giphy-API-Schlüssel trägt der Betreiber der App EINMAL hier ein (developers.giphy.com → Create an App → API).
+   Nutzer müssen sich nirgends anmelden. Solange das Feld leer ist, wird die GIF-Suche nicht angeboten. */
+const GIPHY_KEY = '17NAzml7tSiFi4Hs7Ju4KX6YUNkhVHb4';
+let gs = null;
+function openGifSearch(){ if(!GIPHY_KEY) return; gs = { q:'', results:[], status:'', loading:false }; renderModal(); gifSearch(''); }
+function closeGifSearch(){ gs = null; renderModal(); }
+async function gifSearch(q){
+  if(!gs) return;
+  gs.q = q; gs.loading = true; gs.status = q ? 'Suche …' : 'Beliebte GIFs werden geladen …'; renderModal();
+  const base = 'https://api.giphy.com/v1/gifs/' + (q ? 'search' : 'trending');
+  const url = `${base}?api_key=${encodeURIComponent(GIPHY_KEY)}&limit=24&rating=g${q?`&q=${encodeURIComponent(q)}&lang=de`:''}`;
+  try{
+    const r = await fetch(url);
+    if(r.status===401 || r.status===403){ if(!gs) return; gs.results = []; gs.status = 'Die GIF-Suche ist gerade nicht verfügbar (Giphy hat die Anfrage abgelehnt). Versuch es später nochmal oder wähle eine Datei.'; gs.loading = false; return renderModal(); }
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const j = await r.json(); if(!gs) return;
+    gs.results = (j.data||[]).map(g=>({ id:g.id, title:g.title||'GIF',
+      thumb:(g.images.fixed_width_small||g.images.fixed_width||g.images.downsized).url,
+      url:(g.images.downsized||g.images.fixed_width||g.images.original).url }));
+    gs.status = gs.results.length ? '' : 'Nichts gefunden – versuch einen anderen Suchbegriff.';
+  }catch(e){ if(!gs) return; gs.results = []; gs.status = 'Keine Verbindung zu Giphy. Prüfe dein Internet und versuche es nochmal.'; }
+  gs.loading = false; renderModal();
+}
+function gifPick(i){ const g = gs.results[i]; if(!g) return; gifCfg.src = g.url; saveGif(); gs = null; renderModal(); render(); }
+function gifSearchHtml(){
+  const body = `<div class="row" style="flex-wrap:nowrap"><input id="gsq" value="${esc(gs.q)}" placeholder="Suchen, z. B. party, clap, yes" style="flex:1"
+      oninput="gs.q=this.value" onkeydown="if(event.key==='Enter'){gifSearch(this.value.trim())}"><button class="btn primary" onclick="gifSearch(document.getElementById('gsq').value.trim())">Suchen</button></div>
+    <p class="small muted" style="margin:8px 0">${gs.loading ? esc(gs.status) : gs.status ? esc(gs.status) : (gs.q ? `Ergebnisse für „${esc(gs.q)}“ – tippe ein GIF an.` : 'Beliebte GIFs – tippe eins an oder suche oben.')}</p>
+    <div class="ggrid">${gs.results.map((g,i)=>`<button class="gcell" onclick="gifPick(${i})" aria-label="${esc(g.title)}"><img src="${esc(g.thumb)}" alt="" loading="lazy"></button>`).join('')}</div>
+    <div class="row" style="justify-content:space-between;margin-top:12px"><span class="small muted">Powered by GIPHY</span>
+      <button class="btn" onclick="closeGifSearch()">Schließen</button></div>`;
+  return `<div class="modal-bg"><div class="modal" style="max-width:520px"><h2 style="margin:0 0 10px">GIF auswählen</h2>${body}</div></div>`;
+}
+
+/* ---------- Belohnung beim Abhaken ---------- */
+let celebrate = null;
+const reducedMotion = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+function burst(x,y,n,opts={}){
+  if(reducedMotion()) return;
+  const colors = opts.colors || ['#4f6df5','#f2a007','#2fb27a','#d63384','#9b59d0','#14b8c4'];
+  for(let i=0;i<n;i++){
+    const p = document.createElement('span'); p.className = 'confetti';
+    const ang = (opts.angle ?? -Math.PI/2) + (Math.random()-.5)*(opts.spread ?? Math.PI*1.2), dist = (opts.dist ?? 70) * (.5+Math.random());
+    p.style.setProperty('--x', x+'px'); p.style.setProperty('--y', y+'px');
+    p.style.setProperty('--dx', Math.cos(ang)*dist+'px'); p.style.setProperty('--up', Math.sin(ang)*dist+'px');
+    p.style.setProperty('--down', (Math.sin(ang)*dist + (opts.fall ?? 60) + Math.random()*40)+'px');
+    p.style.setProperty('--rot', (Math.random()*720-360)+'deg');
+    p.style.setProperty('--t', (.8+Math.random()*.5)+'s');
+    p.style.background = colors[i % colors.length];
+    document.body.appendChild(p); setTimeout(()=>p.remove(), 1500);
+  }
+}
+function cheer(key){
+  const el = app.querySelector(`.task[data-key="${key}"]`); if(!el) return;
+  el.classList.add('cheer'); setTimeout(()=>el.classList.remove('cheer'), 900);
+  const cb = el.querySelector('input[type=checkbox]'); const r = (cb||el).getBoundingClientRect();
+  const c = getComputedStyle(el).getPropertyValue('--c').trim();
+  burst(r.left+r.width/2, r.top+r.height/2, 14, {colors:[c,'#2fb27a','#f2a007','#ffffff'], dist:60});
+  try{ navigator.vibrate && navigator.vibrate(18); }catch(e){}
+  // alles für heute geschafft: großer Konfetti-Regen
+  const allDone = page==='today' && !app.querySelector('.task:not(.done)');
+  if(allDone){
+    const w = window.innerWidth;
+    for(const f of [.2,.5,.8]) setTimeout(()=>burst(w*f, window.innerHeight*.35, 22, {angle:-Math.PI/2, spread:Math.PI*1.6, dist:140, fall:200}), 150);
+  }
+  if(gifCfg.src && (gifCfg.mode==='each' || allDone)) showGif();
+}
 /* Aufgabe auf den nächsten Lerntag verschieben – der restliche Plan verteilt sich neu */
 function moveTask(key,from){
   const s = allSessions().find(x=>x.key===key), sub = s && subOf(s.subjectId); if(!sub) return;
@@ -520,7 +655,7 @@ function pickMonth(n){ picker.month = new Date(picker.month.getFullYear(), picke
 function pickDay(d){ picker.to = d; renderModal(); }
 function closePicker(){ picker = null; renderModal(); }
 function confirmPick(){ const {key,from,to} = picker; picker = null; renderModal(); moveTaskTo(key,from,to,false); }
-function renderModal(){ const el = document.getElementById('modal'); if(el) el.innerHTML = wiz ? wizardHtml() : picker ? pickerHtml() : overview ? overviewModalHtml() : ''; }
+function renderModal(){ const el = document.getElementById('modal'); if(el) el.innerHTML = gs ? gifSearchHtml() : wiz ? wizardHtml() : picker ? pickerHtml() : overview ? overviewModalHtml() : ''; }
 
 /* Überblick pro Fach: welches Thema wie oft gelernt/wiederholt wurde (wie die Lernplan-PDFs) */
 let overview = null;
