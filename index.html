@@ -123,6 +123,7 @@ button.btn.danger{color:var(--danger)}
 .wlist{max-height:46vh;overflow:auto;padding-right:2px}
 .tlist{margin:0 0 4px;padding-left:22px;color:var(--muted);font-size:.9rem}
 .tlist li{padding:2px 0}
+.datebtn{width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:500}
 .dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:8px;vertical-align:-1px}
 .sw{display:flex;gap:8px;flex-wrap:wrap;padding-top:4px}
 .swb{width:28px;height:28px;border-radius:50%;border:3px solid transparent;cursor:pointer;padding:0}
@@ -479,9 +480,9 @@ function viewSettings(){
       <summary><span class="fname"><span class="dot" style="background:${hue(sub.id)}"></span>${esc(sub.name)}</span><span class="small muted">${exam} · ${ts.length} ${ts.length===1?'Thema':'Themen'}</span></summary>
       <div class="grid" style="margin-bottom:14px">
         <label class="f">Name<input value="${esc(sub.name)}" onchange="setSub('${sub.id}','name',this.value)"></label>
-        <label class="f">Prüfungsdatum<input type="date" value="${sub.examDate}" onchange="setSub('${sub.id}','examDate',this.value)"></label>
-        <label class="f">Lernen ab<input type="date" value="${sub.startDate||''}" onchange="setSub('${sub.id}','startDate',this.value)">
-          <span class="small muted">Erster Lerntag für dieses Fach. Leer = ab heute.</span></label>
+        <div class="f">Prüfungsdatum${dateBtn(sub.examDate, `pickExam('${sub.id}')`)}</div>
+        <div class="f">Lernen ab${dateBtn(sub.startDate, `pickStart('${sub.id}')`, 'Ab heute')}
+          <span class="small muted">Erster Lerntag für dieses Fach.</span></div>
         <details class="colors" data-s="${sub.id}" ${openColors.has(sub.id)?'open':''} ontoggle="toggleColors(this)">
           <summary>Farbe <span class="dot" style="background:${hue(sub.id)};margin:0 0 0 8px"></span> ›</summary>
           <div class="sw">${PALETTE.map(c=>`<button class="swb ${hue(sub.id)===c?'on':''}" style="background:${c}" onclick="pickColor('${sub.id}','${c}')" aria-label="Farbe wählen"></button>`).join('')}</div>
@@ -702,7 +703,44 @@ function pickMonth(n){ picker.month = new Date(picker.month.getFullYear(), picke
 function pickDay(d){ picker.to = d; renderModal(); }
 function closePicker(){ picker = null; renderModal(); }
 function confirmPick(){ const {key,from,to} = picker; picker = null; renderModal(); moveTaskTo(key,from,to,false); }
-function renderModal(){ const el = document.getElementById('modal'); if(el) el.innerHTML = gs ? gifSearchHtml() : wiz ? wizardHtml() : picker ? pickerHtml() : overview ? overviewModalHtml() : ''; }
+function renderModal(){ const el = document.getElementById('modal'); if(el) el.innerHTML = dp ? datePickHtml() : gs ? gifSearchHtml() : wiz ? wizardHtml() : picker ? pickerHtml() : overview ? overviewModalHtml() : ''; }
+
+/* ---------- Eigene Datumsauswahl (Prüfungsdatum, „Lernen ab“) ----------
+   Das Datumsfeld des Browsers bestätigt auf manchen Geräten sofort nach dem ersten Tipp und schließt sich.
+   Hier wählst du einen Tag und bestätigst ausdrücklich mit „Übernehmen“. */
+let dp = null;
+const dateBtn = (value, onclick, empty='Datum wählen') =>
+  `<button type="button" class="btn datebtn" onclick="${onclick}">${value ? fmt(value,{weekday:'short',day:'numeric',month:'long',year:'numeric'}) : empty} <span>📅</span></button>`;
+function openDatePick(title, value, opts, cb){
+  const base = parse(value || opts.min || todayIso()); base.setDate(1);
+  dp = { title, sel:value||'', min:opts.min||'', max:opts.max||'', clear:!!opts.clear, month:base, cb }; renderModal();
+}
+function dpMonth(n){ dp.month = new Date(dp.month.getFullYear(), dp.month.getMonth()+n, 1, 12); renderModal(); }
+function dpSelect(d){ dp.sel = d; renderModal(); }
+function dpCancel(){ dp = null; renderModal(); }
+function dpConfirm(){ const {sel,cb} = dp; dp = null; renderModal(); cb(sel); }
+function dpClear(){ const {cb} = dp; dp = null; renderModal(); cb(''); }
+function datePickHtml(){
+  const y = dp.month.getFullYear(), m = dp.month.getMonth();
+  const offset = (new Date(y,m,1,12).getDay()+6)%7, nDays = new Date(y,m+1,0).getDate();
+  let cells = ['Mo','Di','Mi','Do','Fr','Sa','So'].map(d=>`<div class="dow">${d}</div>`).join('') + '<div></div>'.repeat(offset);
+  for(let d=1; d<=nDays; d++){
+    const s = `${y}-${pad(m+1)}-${pad(d)}`, ok = (!dp.min || s>=dp.min) && (!dp.max || s<=dp.max);
+    cells += `<button type="button" class="pd ${ok?'':'off'} ${s===dp.sel?'sel':''}" ${ok?`onclick="dpSelect('${s}')"`:'disabled'}>${d}</button>`;
+  }
+  const title = dp.month.toLocaleDateString('de-DE',{month:'long',year:'numeric'});
+  return `<div class="modal-bg"><div class="modal" style="max-width:380px">
+    <h2 style="margin:0 0 8px">${esc(dp.title)}</h2>
+    <div class="cal-head"><button class="btn" onclick="dpMonth(-1)">‹</button><b>${title}</b><button class="btn" onclick="dpMonth(1)">›</button></div>
+    <div class="pcal">${cells}</div>
+    <p class="small muted" style="margin:4px 0 12px">${dp.sel ? `Gewählt: <b>${fmt(dp.sel,{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</b>` : 'Tippe auf einen Tag.'}</p>
+    <div class="row" style="justify-content:flex-end">${dp.clear?'<button class="btn" onclick="dpClear()">Löschen</button>':''}<button class="btn" onclick="dpCancel()">Abbrechen</button>${dp.sel?'<button class="btn primary" onclick="dpConfirm()">Übernehmen</button>':''}</div>
+  </div></div>`;
+}
+function pickExam(id){ const s = subOf(id); if(s) openDatePick('Prüfungsdatum', s.examDate, {min:addDays(todayIso(),1)}, d=>{ if(d) setSub(id,'examDate',d); }); }
+function pickStart(id){ const s = subOf(id); if(s) openDatePick('Lernen ab', s.startDate, {min:todayIso(), max:s.examDate?addDays(s.examDate,-1):'', clear:true}, d=>setSub(id,'startDate',d)); }
+function wizPickExam(){ openDatePick('Prüfungsdatum', wiz.examDate, {min:addDays(todayIso(),1)}, d=>{ if(d) wiz.examDate = d; renderModal(); }); }
+function wizPickStart(){ openDatePick('Lernen ab', wiz.startDate, {min:todayIso(), max:wiz.examDate?addDays(wiz.examDate,-1):'', clear:true}, d=>{ wiz.startDate = d; renderModal(); }); }
 
 /* Überblick pro Fach: welches Thema wie oft gelernt/wiederholt wurde (wie die Lernplan-PDFs) */
 let overview = null;
@@ -972,10 +1010,10 @@ function wizardHtml(){
   if(wiz.step===1){
     body = `<div class="grid" style="gap:12px">
       <label class="f">Name des Fachs<input value="${esc(wiz.name)}" placeholder="z. B. Marketing" oninput="wiz.name=this.value" autofocus></label>
-      <label class="f">Lernen ab (optional)<input type="date" value="${wiz.startDate}" onchange="wiz.startDate=this.value">
-        <span class="small muted">Leer = ab heute.</span></label>
-      <label class="f">Prüfungsdatum<input type="date" min="${addDays(todayIso(),1)}" value="${wiz.examDate}" onchange="wiz.examDate=this.value">
-        <span class="small muted">Ohne Datum wird das Fach noch nicht eingeplant.</span></label>
+      <div class="f">Lernen ab (optional)${dateBtn(wiz.startDate, 'wizPickStart()', 'Ab heute')}
+        <span class="small muted">Erster Lerntag für dieses Fach.</span></div>
+      <div class="f">Prüfungsdatum${dateBtn(wiz.examDate, 'wizPickExam()')}
+        <span class="small muted">Ohne Datum wird das Fach noch nicht eingeplant.</span></div>
       <label class="f">Wiederholungen
         <select onchange="wiz.repeats=+this.value">${[0,1,2,3,4,5].map(n=>`<option value="${n}" ${wiz.repeats===n?'selected':''}>${n===0?'keine':n+'×'}</option>`).join('')}</select></label>
       <label class="f">Lernverlauf
