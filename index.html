@@ -83,10 +83,30 @@ button.btn.danger{color:var(--danger)}
   box-shadow:0 8px 30px rgba(0,0,0,.3);animation:gifin .35s cubic-bezier(.3,1.5,.5,1);cursor:pointer;transition:opacity .45s,transform .45s}
 .gifpop.out{opacity:0;transform:translateX(-50%) translateY(14px)}
 .gifpop img{display:block;max-width:min(78vw,340px);max-height:40vh;border-radius:12px}
+.ag{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.ag .dow{text-align:center;font-size:.7rem;color:var(--muted);font-weight:600}
+.ac{min-height:50px;border:1px solid var(--line);border-radius:8px;padding:3px;font-size:.7rem;background:var(--bg);overflow:hidden}
+.ac .n{font-weight:700;display:block}
+.ac.free{background:var(--free)}
+.ac.ex{border-color:var(--danger);background:color-mix(in srgb,var(--danger) 16%,var(--bg))}
+.ac.chg{outline:2px solid var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--bg))}
+.dots i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:2px}
+.legchg{display:inline-block;width:12px;height:12px;border:2px solid var(--accent);border-radius:3px;vertical-align:-2px}
+.ainotes{margin:0;padding-left:20px;font-size:.9rem}
+.aidiff{font-size:.85rem;display:flex;flex-direction:column;gap:4px;max-height:28vh;overflow:auto}
+.aidiff .plus{color:var(--ok)}.aidiff .minus{color:var(--danger)}
+.spin{width:34px;height:34px;border:4px solid var(--line);border-top-color:var(--accent);border-radius:50%;margin:0 auto;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 .ggrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;max-height:50vh;overflow:auto;-webkit-overflow-scrolling:touch}
 /* Quadratische Kacheln ohne aspect-ratio (ältere iPad-Safari-Versionen kennen es nicht) */
 .gcell{position:relative;display:block;width:100%;height:0;padding:0 0 100% 0;border-radius:10px;overflow:hidden;background:var(--bg);cursor:pointer;-webkit-tap-highlight-color:transparent}
 .gcell img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;display:block}
+.gthumbs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.gth{position:relative;width:100%;height:0;padding-bottom:100%;border-radius:10px;overflow:hidden;background:var(--bg)}
+.gth img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;display:block}
+.gx{position:absolute;top:3px;right:3px;width:24px;height:24px;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:.7rem;cursor:pointer;padding:0}
+.gcell.on{outline:3px solid var(--accent);outline-offset:-3px}
+.gcell.on::after{content:'✓';position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-text);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem}
 .gifprev{max-width:100%;max-height:140px;border-radius:12px;display:block}
 @keyframes gifin{0%{opacity:0;transform:translateX(-50%) scale(.6)}100%{opacity:1;transform:translateX(-50%) scale(1)}}
 @media (prefers-reduced-motion:reduce){.task.cheer,.task.cheer input[type=checkbox]{animation:none}.confetti{display:none}.gifpop{display:none}}
@@ -448,7 +468,7 @@ function viewCal(plan){
   const title = calMonth.toLocaleDateString('de-DE',{month:'long',year:'numeric'});
   return `<h1>Kalender</h1>${warnHtml(plan.info)}${overviewHtml(plan.info)}
     <div class="card"><div class="cal-head"><button class="btn" onclick="moveMonth(-1)">‹</button><b>${title}</b><button class="btn" onclick="moveMonth(1)">›</button></div>
-    <div class="cal">${cells}</div></div>${dayDetail(plan)}${examsHtml()}`;
+    <div class="cal">${cells}</div></div>${dayDetail(plan)}${aiCardHtml()}${examsHtml()}`;
 }
 
 function dayDetail(plan){
@@ -504,14 +524,15 @@ function viewSettings(){
       <select onchange="setPerDay(+this.value)">${[[0,'Alle Fächer jeden Tag'],[1,'1 Fach pro Tag'],[2,'Bis zu 2 Fächer pro Tag'],[3,'Bis zu 3 Fächer pro Tag'],[4,'Bis zu 4 Fächer pro Tag']].map(([v,l])=>`<option value="${v}" ${(+S.subjectsPerDay||0)===v?'selected':''}>${l}</option>`).join('')}</select>
       <span class="small muted">Die Fächer wechseln sich ab. Jeden Tag kommen die dringendsten dran, die anderen bekommen dafür an ihren Tagen mehr.</span></label></div>
 
-  <div class="card"><h2>Belohnungs-GIF</h2>
-    <p class="small muted" style="margin:0 0 10px">Wähle ein GIF, das beim Abhaken eines Themas kurz erscheint – ${GIPHY_KEY ? 'per Suche, ' : ''}als Datei oder per Link. Deine Auswahl bleibt nur auf diesem Gerät gespeichert.</p>
-    ${gifCfg.src ? `<img class="gifprev" src="${esc(gifCfg.src)}" alt="Vorschau">` : '<p class="muted small">Noch kein GIF gewählt.</p>'}
+  <div class="card"><h2>Belohnungs-GIFs</h2>
+    <p class="small muted" style="margin:0 0 10px">Wähle ein oder mehrere GIFs. Beim Abhaken eines Themas erscheint zufällig eins davon – ${GIPHY_KEY ? 'per Suche, ' : ''}als Datei oder per Link. Deine Auswahl bleibt nur auf diesem Gerät gespeichert.</p>
+    ${gifCfg.list.length ? `<div class="gthumbs">${gifCfg.list.map((s,i)=>`<div class="gth"><img src="${esc(s)}" alt=""><button class="gx" onclick="removeGif(${i})" aria-label="GIF entfernen">✕</button></div>`).join('')}</div>
+      <p class="small muted" style="margin:6px 0 0">${gifCfg.list.length} ${gifCfg.list.length===1?'GIF':'GIFs'} ausgewählt</p>` : '<p class="muted small">Noch kein GIF gewählt.</p>'}
     <div class="row" style="margin:10px 0">
-      ${GIPHY_KEY ? '<button class="btn primary" onclick="openGifSearch()">GIF suchen</button>' : ''}
-      <button class="btn ${GIPHY_KEY?'':'primary'}" onclick="document.getElementById('gfile').click()">Datei wählen</button>
-      <button class="btn" onclick="pickGifLink()">Link einfügen</button>
-      ${gifCfg.src ? `<button class="btn" onclick="showGif()">Testen</button><button class="btn danger" onclick="removeGif()">Entfernen</button>` : ''}
+      ${GIPHY_KEY ? '<button class="btn primary" onclick="openGifSearch()">GIFs suchen</button>' : ''}
+      <button class="btn ${GIPHY_KEY?'':'primary'}" onclick="document.getElementById('gfile').click()">Datei hinzufügen</button>
+      <button class="btn" onclick="pickGifLink()">Link hinzufügen</button>
+      ${gifCfg.list.length ? `<button class="btn" onclick="showGif()">Testen</button><button class="btn danger" onclick="clearGifs()">Alle entfernen</button>` : ''}
       <input type="file" id="gfile" accept="image/gif,image/*" hidden onchange="pickGifFile(this.files[0])"></div>
     <label class="f">Wann zeigen?
       <select onchange="setGifMode(this.value)"><option value="each" ${gifCfg.mode==='each'?'selected':''}>Bei jedem abgehakten Thema</option><option value="end" ${gifCfg.mode==='end'?'selected':''}>Nur wenn alles für heute geschafft ist</option></select></label></div>
@@ -541,41 +562,65 @@ function toggleDone(key,day){
   save(); render();
 }
 
-/* ---------- Belohnungs-GIF (eigene Datei oder Link, getrennt vom Plan gespeichert) ---------- */
-const GIFKEY = 'lernmehr-gif';
-let gifCfg = (() => { try{ return Object.assign({src:'',mode:'each'}, JSON.parse(localStorage.getItem(GIFKEY)||'{}')); }catch(e){ return {src:'',mode:'each'}; } })();
+/* ---------- Belohnungs-GIFs (mehrere möglich, beim Abhaken erscheint zufällig eins; getrennt vom Plan gespeichert) ---------- */
+const GIFKEY = 'lernmehr-gif', GIF_MAX = 12;
+let gifCfg = (() => {
+  const c = {list:[], mode:'each'};
+  try{ const j = JSON.parse(localStorage.getItem(GIFKEY)||'{}');
+    if(Array.isArray(j.list)) c.list = j.list.filter(x=>typeof x==='string'); else if(j.src) c.list = [j.src];   // altes Format: ein GIF
+    if(j.mode) c.mode = j.mode; }catch(e){}
+  return c;
+})();
+let gifLast = -1;
 function saveGif(){ try{ localStorage.setItem(GIFKEY, JSON.stringify(gifCfg)); return true; }catch(e){ return false; } }
+function gifAdd(src){
+  if(gifCfg.list.includes(src)) return true;
+  if(gifCfg.list.length >= GIF_MAX){ alert(`Du kannst bis zu ${GIF_MAX} GIFs auswählen.`); return false; }
+  gifCfg.list.push(src);
+  if(!saveGif()){ gifCfg.list.pop(); alert('Das GIF konnte nicht gespeichert werden (Speicher voll). Nimm ein kleineres GIF oder füge einen Link ein.'); return false; }
+  return true;
+}
 function pickGifFile(file){
   if(!file) return;
   if(!file.type.startsWith('image/')){ alert('Bitte wähle ein GIF oder ein Bild.'); return; }
   if(file.size > 3*1024*1024){ alert('Die Datei ist zu groß (maximal 3 MB). Nimm ein kleineres GIF oder füge einen Link ein.'); return; }
   const r = new FileReader();
-  r.onload = () => { const old = gifCfg.src; gifCfg.src = r.result; if(!saveGif()){ gifCfg.src = old; alert('Das GIF konnte nicht gespeichert werden (Speicher voll). Nimm ein kleineres GIF oder füge einen Link ein.'); } render(); };
+  r.onload = () => { gifAdd(r.result); render(); };
   r.readAsDataURL(file);
 }
 function pickGifLink(){
-  const url = (prompt('Link zum GIF einfügen (https://…):', gifCfg.src.startsWith('http') ? gifCfg.src : '') || '').trim();
+  const url = (prompt('Link zum GIF einfügen (https://…):', '') || '').trim();
   if(!url) return;
   if(!/^https?:\/\//i.test(url)){ alert('Der Link muss mit https:// beginnen.'); return; }
-  gifCfg.src = url; saveGif(); render();
+  gifAdd(url); render();
 }
-function removeGif(){ gifCfg.src = ''; saveGif(); render(); }
+function removeGif(i){ gifCfg.list.splice(i,1); saveGif(); render(); }
+function clearGifs(){ if(confirm('Alle ausgewählten GIFs entfernen?')){ gifCfg.list = []; saveGif(); render(); } }
 function setGifMode(m){ gifCfg.mode = m; saveGif(); render(); }
-function showGif(){
-  if(!gifCfg.src || reducedMotion()) return;
+function showGif(tries=0){
+  const n = gifCfg.list.length; if(!n || reducedMotion()) return;
+  let i = Math.floor(Math.random()*n);
+  if(n>1 && i===gifLast) i = (i + 1 + Math.floor(Math.random()*(n-1))) % n;     // nicht zweimal hintereinander dasselbe
+  gifLast = i;
   document.querySelectorAll('.gifpop').forEach(e=>e.remove());
   const box = document.createElement('div'); box.className = 'gifpop'; box.onclick = () => box.remove();
-  const img = new Image(); img.alt = ''; img.onerror = () => box.remove(); img.src = gifCfg.src;
+  const img = new Image(); img.alt = ''; img.onerror = () => { box.remove(); if(tries<3 && n>1) showGif(tries+1); };   // defekter Link: anderes GIF versuchen
+  img.src = gifCfg.list[i];
   box.appendChild(img); document.body.appendChild(box);
   setTimeout(()=>box.classList.add('out'), 2600); setTimeout(()=>box.remove(), 3100);
 }
 
-/* ---------- GIF-Suche über Giphy (eigener API-Schlüssel, nur auf diesem Gerät gespeichert) ---------- */
+/* ---------- GIF-Suche über Giphy ---------- */
 /* Den kostenlosen Giphy-API-Schlüssel trägt der Betreiber der App EINMAL hier ein (developers.giphy.com → Create an App → API).
    Nutzer müssen sich nirgends anmelden. Solange das Feld leer ist, wird die GIF-Suche nicht angeboten. */
 const GIPHY_KEY = '17NAzml7tSiFi4Hs7Ju4KX6YUNkhVHb4';
 let gs = null;
-function openGifSearch(){ if(!GIPHY_KEY) return; gs = { q:'', results:[], status:'', loading:false }; renderModal(); gifSearch(''); }
+const isLink = u => /^https?:\/\//i.test(u);
+function openGifSearch(){
+  if(!GIPHY_KEY) return;
+  gs = { q:'', results:[], status:'', loading:false, sel:new Set(gifCfg.list.filter(isLink)), keep:gifCfg.list.filter(u=>!isLink(u)) };
+  renderModal(); gifSearch('');
+}
 function closeGifSearch(){ gs = null; renderModal(); }
 async function gifSearch(q){
   if(!gs) return;
@@ -594,15 +639,26 @@ async function gifSearch(q){
   }catch(e){ if(!gs) return; gs.results = []; gs.status = 'Keine Verbindung zu Giphy. Prüfe dein Internet und versuche es nochmal.'; }
   gs.loading = false; renderModal();
 }
-function gifPick(i){ const g = gs.results[i]; if(!g) return; gifCfg.src = g.url; saveGif(); gs = null; renderModal(); render(); }
+const gsCount = () => gs.sel.size + gs.keep.length;
+function gifToggle(i, el){
+  const g = gs.results[i]; if(!g) return;
+  if(gs.sel.has(g.url)){ gs.sel.delete(g.url); el.classList.remove('on'); }
+  else { if(gsCount() >= GIF_MAX){ alert(`Du kannst bis zu ${GIF_MAX} GIFs auswählen.`); return; } gs.sel.add(g.url); el.classList.add('on'); }
+  const c = document.getElementById('gscount'); if(c) c.textContent = `${gsCount()} ausgewählt`;
+}
+function gifDone(){
+  const old = gifCfg.list; gifCfg.list = [...gs.keep, ...gs.sel];
+  if(!saveGif()){ gifCfg.list = old; alert('Die Auswahl konnte nicht gespeichert werden.'); }
+  gs = null; renderModal(); render();
+}
 function gifSearchHtml(){
   const body = `<div class="row" style="flex-wrap:nowrap"><input id="gsq" value="${esc(gs.q)}" placeholder="Suchen, z. B. party, clap, yes" style="flex:1"
       oninput="gs.q=this.value" onkeydown="if(event.key==='Enter'){gifSearch(this.value.trim())}"><button class="btn primary" onclick="gifSearch(document.getElementById('gsq').value.trim())">Suchen</button></div>
-    <p class="small muted" style="margin:8px 0">${gs.loading ? esc(gs.status) : gs.status ? esc(gs.status) : (gs.q ? `Ergebnisse für „${esc(gs.q)}“ – tippe ein GIF an.` : 'Beliebte GIFs – tippe eins an oder suche oben.')}</p>
-    <div class="ggrid">${gs.results.map((g,i)=>`<div class="gcell" role="button" tabindex="0" onclick="gifPick(${i})" aria-label="${esc(g.title)}"><img src="${esc(g.thumb)}" alt=""></div>`).join('')}</div>
-    <div class="row" style="justify-content:space-between;margin-top:12px"><span class="small muted">Powered by GIPHY</span>
-      <button class="btn" onclick="closeGifSearch()">Schließen</button></div>`;
-  return `<div class="modal-bg"><div class="modal" style="max-width:520px"><h2 style="margin:0 0 10px">GIF auswählen</h2>${body}</div></div>`;
+    <p class="small muted" style="margin:8px 0">${gs.loading ? esc(gs.status) : gs.status ? esc(gs.status) : 'Tippe auf alle GIFs, die dir gefallen – beim Abhaken erscheint zufällig eins davon.'}</p>
+    <div class="ggrid">${gs.results.map((g,i)=>`<div class="gcell ${gs.sel.has(g.url)?'on':''}" role="button" tabindex="0" onclick="gifToggle(${i},this)" aria-label="${esc(g.title)}"><img src="${esc(g.thumb)}" alt=""></div>`).join('')}</div>
+    <div class="row" style="justify-content:space-between;margin-top:12px"><span class="small muted"><span id="gscount">${gsCount()} ausgewählt</span> · Powered by GIPHY</span>
+      <span><button class="btn" onclick="closeGifSearch()">Abbrechen</button> <button class="btn primary" onclick="gifDone()">Fertig</button></span></div>`;
+  return `<div class="modal-bg"><div class="modal" style="max-width:520px"><h2 style="margin:0 0 10px">GIFs auswählen</h2>${body}</div></div>`;
 }
 
 /* ---------- Belohnung beim Abhaken ---------- */
@@ -636,7 +692,7 @@ function cheer(key){
     const w = window.innerWidth;
     for(const f of [.2,.5,.8]) setTimeout(()=>burst(w*f, window.innerHeight*.35, 22, {angle:-Math.PI/2, spread:Math.PI*1.6, dist:140, fall:200}), 150);
   }
-  if(gifCfg.src && (gifCfg.mode==='each' || allDone)) showGif();
+  if(gifCfg.list.length && (gifCfg.mode==='each' || allDone)) showGif();
 }
 /* Aufgabe auf den nächsten Lerntag verschieben – der restliche Plan verteilt sich neu */
 function moveTask(key,from){
@@ -656,7 +712,7 @@ function pickMonth(n){ picker.month = new Date(picker.month.getFullYear(), picke
 function pickDay(d){ picker.to = d; renderModal(); }
 function closePicker(){ picker = null; renderModal(); }
 function confirmPick(){ const {key,from,to} = picker; picker = null; renderModal(); moveTaskTo(key,from,to,false); }
-function renderModal(){ const el = document.getElementById('modal'); if(el) el.innerHTML = gs ? gifSearchHtml() : wiz ? wizardHtml() : picker ? pickerHtml() : overview ? overviewModalHtml() : ''; }
+function renderModal(){ const el = document.getElementById('modal'); if(el) el.innerHTML = ai ? aiModalHtml() : gs ? gifSearchHtml() : wiz ? wizardHtml() : picker ? pickerHtml() : overview ? overviewModalHtml() : ''; }
 
 /* Überblick pro Fach: welches Thema wie oft gelernt/wiederholt wurde (wie die Lernplan-PDFs) */
 let overview = null;
@@ -958,6 +1014,183 @@ function wizardHtml(){
   </div></div>`;
 }
 
+
+/* ---------- Plan mit KI anpassen: Anweisung → Vorschau → bestätigen oder neu schreiben ---------- */
+let ai = null, aiDraft = '';
+const withState = (st, fn) => { const real = S; S = st; try{ return fn(); } finally{ S = real; } };
+const cloneState = () => JSON.parse(JSON.stringify(S));
+const shortDay = d => fmt(d,{weekday:'short',day:'numeric',month:'numeric'});
+
+function aiCardHtml(){
+  return `<div class="card"><h2 style="margin-bottom:4px">Plan mit KI anpassen</h2>
+    <p class="small muted" style="margin:0 0 10px">Schreib, was sich ändern soll. Du siehst zuerst eine Vorschau und entscheidest dann, ob du sie übernimmst.</p>
+    <textarea style="min-height:84px" placeholder="z. B. „Am Wochenende nichts lernen“ oder „Die Marketing-Prüfung ist jetzt am 12.12.“" oninput="aiDraft=this.value">${esc(aiDraft)}</textarea>
+    <div class="row" style="margin-top:8px"><button class="btn primary" onclick="aiStart()">✨ Vorschau erstellen</button></div></div>`;
+}
+function aiStart(){
+  const text = aiDraft.trim();
+  if(!text){ alert('Schreib zuerst, was sich am Plan ändern soll.'); return; }
+  if(!S.subjects.length){ alert('Lege zuerst ein Fach mit Prüfungsdatum an.'); return; }
+  ai = { instruction:text, history:[], status:'loading', rewrite:'', summary:'', question:'', month:null };
+  renderModal(); aiRequest();
+}
+function aiPayload(){
+  const plan = computePlan(), today = todayIso(), lines = [];
+  for(const [d,ts] of Object.entries(plan.days).sort()){
+    if(d<today) continue;
+    for(const t of ts){ if(t.done) continue; const sub = subOf(t.subjectId); lines.push(`${d}|${t.key}|${sub?sub.name:'?'}|${t.name}|${t.round===0?'L':'W'+t.round}`); }
+  }
+  return { heute:today, anweisung:ai.instruction, verlauf:ai.history,
+    faecher:S.subjects.map(s=>({id:s.id,name:s.name,pruefung:s.examDate||null,wiederholungen:s.repeats,lernverlauf:s.ramp})),
+    lernfrei:S.freeDays.slice().sort(), plan:lines };
+}
+async function aiRequest(){
+  try{
+    const r = await fetch('/api/plan-assist', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(aiPayload())});
+    let j = {}; try{ j = await r.json(); }catch(e){}
+    if(!ai) return;
+    if(!r.ok){
+      const msg = r.status===503 && j.fehler==='ki_nicht_eingerichtet' ? 'Die KI ist noch nicht eingerichtet (es fehlt der Schlüssel auf dem Server).'
+        : r.status===429 ? 'Zu viele Anfragen in kurzer Zeit. Warte einen Moment und versuch es nochmal.'
+        : r.status===404 ? 'Die KI gibt es nur in der Online-Version der App, nicht in der lokalen Datei.'
+        : 'Die KI ist gerade nicht erreichbar. Versuch es gleich nochmal.';
+      ai.status = 'error'; ai.error = msg; return renderModal();
+    }
+    ai.summary = j.zusammenfassung || '';
+    if(j.rueckfrage && !(j.operationen||[]).length){ ai.status = 'question'; ai.question = j.rueckfrage; return renderModal(); }
+    const res = aiApplyOps(j.operationen || []);
+    ai.proposed = res.state; ai.notes = res.notes; ai.errors = res.errors;
+    ai.newPlan = withState(res.state, computePlan); ai.oldPlan = computePlan();
+    ai.changed = aiDiff(ai.oldPlan, ai.newPlan);
+    const first = ai.changed[0] ? parse(ai.changed[0].d) : new Date(); ai.month = new Date(first.getFullYear(), first.getMonth(), 1, 12);
+    ai.status = 'preview'; renderModal();
+  }catch(e){
+    if(!ai) return;
+    ai.status = 'error'; ai.error = location.protocol==='file:' ? 'Die KI gibt es nur in der Online-Version der App, nicht in der lokalen Datei.' : 'Keine Verbindung. Prüfe dein Internet und versuch es nochmal.'; renderModal();
+  }
+}
+
+/* Änderungen der KI prüfen und auf eine KOPIE des Plans anwenden (nichts wird ungeprüft übernommen) */
+function aiApplyOps(ops){
+  const st = cloneState(), today = todayIso(), notes = [], errors = [];
+  const base = computePlan(), where = {}, info = {};
+  for(const [d,ts] of Object.entries(base.days)) for(const t of ts) if(!t.done && d>=today){ where[t.key] = d; info[t.key] = t; }
+  const validDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') && !isNaN(parse(d));
+  const exams = () => st.subjects.map(s=>s.examDate).filter(Boolean).sort();
+  const freeOn = [], freeOff = [], moved = [], subj = [];
+  for(const op of ops.slice(0,200)){
+    if(!op || typeof op!=='object') continue;
+    if(op.typ==='lernfrei_setzen' || op.typ==='lernfrei_aufheben'){
+      for(const d of op.daten||[]){
+        if(!validDate(d) || d<today){ errors.push(`${d||'?'}: Tag liegt in der Vergangenheit oder ist ungültig.`); continue; }
+        if(op.typ==='lernfrei_setzen'){ if(exams().length && d>=exams().pop()){ errors.push(`${shortDay(d)}: Das ist nach der letzten Prüfung.`); continue; } if(!st.freeDays.includes(d)){ st.freeDays.push(d); freeOn.push(d); } }
+        else { const i = st.freeDays.indexOf(d); if(i>=0){ st.freeDays.splice(i,1); freeOff.push(d); } }
+      }
+    } else if(op.typ==='thema_verschieben'){
+      const t = info[op.schluessel], to = op.ziel;
+      if(!t){ errors.push('Ein Thema aus dem Vorschlag gibt es im Plan nicht (mehr).'); continue; }
+      const sub = st.subjects.find(s=>s.id===t.subjectId);
+      if(!validDate(to) || to<today){ errors.push(`„${t.name}“: Zieltag ungültig.`); continue; }
+      if(!sub || !sub.examDate || to>=sub.examDate){ errors.push(`„${t.name}“: Der Zieltag liegt nicht vor der Prüfung (${sub&&sub.examDate?shortDay(sub.examDate):'kein Datum'}).`); continue; }
+      if(st.freeDays.includes(to)){ errors.push(`„${t.name}“: ${shortDay(to)} ist lernfrei.`); continue; }
+      const prev = st.moves[op.schluessel], from = where[op.schluessel];
+      st.moves[op.schluessel] = { to, from:[...(prev?prev.from:[]), from].filter(x=>x!==to) };
+      moved.push({name:t.name, sub:sub.name, from, to});
+    } else if(op.typ==='verschiebung_aufheben'){
+      if(op.schluessel==='alle'){ const n = Object.keys(st.moves).length; if(n){ st.moves = {}; subj.push('Alle manuellen Verschiebungen aufgehoben.'); } }
+      else if(st.moves[op.schluessel]){ delete st.moves[op.schluessel]; subj.push('Eine Verschiebung aufgehoben.'); }
+    } else if(op.typ==='fach_aendern'){
+      const s = st.subjects.find(x=>x.id===op.fach_id);
+      if(!s){ errors.push('Ein Fach aus dem Vorschlag gibt es nicht.'); continue; }
+      if(op.pruefungsdatum!==undefined){
+        if(!validDate(op.pruefungsdatum) || op.pruefungsdatum<=today){ errors.push(`${s.name}: Das neue Prüfungsdatum muss in der Zukunft liegen.`); }
+        else { subj.push(`${s.name}: Prüfung am ${fmt(op.pruefungsdatum,{weekday:'short',day:'numeric',month:'long'})} (vorher ${s.examDate?shortDay(s.examDate):'kein Datum'}).`); s.examDate = op.pruefungsdatum; }
+      }
+      if(op.wiederholungen!==undefined){
+        const n = Math.round(+op.wiederholungen);
+        if(n>=0 && n<=5){ subj.push(`${s.name}: ${n===0?'keine Wiederholungen':n+' Wiederholungen'} (vorher ${s.repeats}).`); s.repeats = n; } else errors.push(`${s.name}: Wiederholungen müssen zwischen 0 und 5 liegen.`);
+      }
+      if(op.lernverlauf!==undefined){
+        if(RAMP[op.lernverlauf]!==undefined){ subj.push(`${s.name}: Lernverlauf „${RAMP_LABEL[op.lernverlauf]}“.`); s.ramp = op.lernverlauf; } else errors.push(`${s.name}: Unbekannter Lernverlauf.`);
+      }
+    }
+  }
+  if(freeOn.length) notes.push(`Lernfrei: ${freeOn.sort().map(shortDay).join(' · ')}`);
+  if(freeOff.length) notes.push(`Wieder Lernen: ${freeOff.sort().map(shortDay).join(' · ')}`);
+  for(const m of moved) notes.push(`„${m.name}“ (${m.sub}): ${shortDay(m.from)} → ${shortDay(m.to)}`);
+  notes.push(...subj);
+  return { state:st, notes, errors };
+}
+
+/* Unterschied zwischen altem und neuem Plan, pro Tag */
+function aiDiff(oldPlan,newPlan){
+  const today = todayIso(), days = new Set([...Object.keys(oldPlan.days),...Object.keys(newPlan.days)]), out = [];
+  const keys = (p,d) => new Map((p.days[d]||[]).filter(t=>!t.done).map(t=>[t.key,`${t.name}${t.round?' (W'+t.round+')':''}`]));
+  for(const d of [...days].sort()){
+    if(d<today) continue;
+    const a = keys(oldPlan,d), b = keys(newPlan,d);
+    const add = [...b].filter(([k])=>!a.has(k)).map(([,n])=>n), rem = [...a].filter(([k])=>!b.has(k)).map(([,n])=>n);
+    if(add.length || rem.length) out.push({d, add, rem});
+  }
+  return out;
+}
+
+function aiGridHtml(){
+  const st = ai.proposed, plan = ai.newPlan, changed = new Set(ai.changed.map(c=>c.d));
+  const y = ai.month.getFullYear(), m = ai.month.getMonth();
+  const offset = (new Date(y,m,1,12).getDay()+6)%7, nDays = new Date(y,m+1,0).getDate();
+  let cells = ['Mo','Di','Mi','Do','Fr','Sa','So'].map(d=>`<div class="dow">${d}</div>`).join('') + '<div></div>'.repeat(offset);
+  for(let d=1; d<=nDays; d++){
+    const s = `${y}-${pad(m+1)}-${pad(d)}`, ts = (plan.days[s]||[]), free = st.freeDays.includes(s), ex = st.subjects.some(x=>x.examDate===s);
+    const dots = [...new Set(ts.map(t=>t.subjectId))].slice(0,4).map(id=>`<i style="background:${hue(id)}"></i>`).join('');
+    cells += `<div class="ac ${changed.has(s)?'chg':''} ${free?'free':''} ${ex?'ex':''}"><span class="n">${d}</span>${ex?'<span class="small">Prüfung</span>':free?'<span class="small muted">frei</span>':ts.length?`<span class="dots">${dots}</span><span class="small muted">${ts.length}</span>`:''}</div>`;
+  }
+  const title = ai.month.toLocaleDateString('de-DE',{month:'long',year:'numeric'});
+  return `<div class="cal-head"><button class="btn" onclick="aiMonth(-1)">‹</button><b>${title}</b><button class="btn" onclick="aiMonth(1)">›</button></div><div class="ag">${cells}</div>
+    <p class="small muted" style="margin:6px 0 0"><span class="legchg"></span> = hier ändert sich etwas</p>`;
+}
+function aiMonth(n){ ai.month = new Date(ai.month.getFullYear(), ai.month.getMonth()+n, 1, 12); renderModal(); }
+
+function aiModalHtml(){
+  let body = '', foot = '';
+  if(ai.status==='loading'){
+    body = `<div class="empty" style="padding:30px 0"><div class="spin"></div><p class="muted" style="margin:14px 0 0">Die KI plant um …</p></div>`;
+    foot = `<button class="btn" onclick="aiClose()">Abbrechen</button>`;
+  } else if(ai.status==='error'){
+    body = `<p>${esc(ai.error)}</p>`; foot = `<button class="btn" onclick="aiClose()">Schließen</button><button class="btn primary" onclick="ai.status='loading';renderModal();aiRequest()">Nochmal versuchen</button>`;
+  } else if(ai.status==='question'){
+    body = `<p style="margin:0 0 6px"><b>Eine Rückfrage:</b></p><p>${esc(ai.question)}</p>
+      <textarea style="min-height:80px" placeholder="Deine Antwort oder eine genauere Anweisung …" oninput="ai.rewrite=this.value">${esc(ai.rewrite)}</textarea>`;
+    foot = `<button class="btn" onclick="aiClose()">Abbrechen</button><button class="btn primary" onclick="aiRetry()">Antworten</button>`;
+  } else {
+    const noChange = !ai.changed.length;
+    body = `<p style="margin:0 0 8px">${esc(ai.summary)}</p>
+      ${ai.notes.length ? `<ul class="ainotes">${ai.notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ul>` : ''}
+      ${ai.errors.length ? `<div class="notice" style="margin-top:8px"><b>Das ging nicht:</b><br>${ai.errors.map(esc).join('<br>')}</div>` : ''}
+      ${noChange ? '<p class="muted">Mit diesem Vorschlag ändert sich nichts am Plan.</p>' : `
+        <h2 style="margin:14px 0 8px">So sieht dein Kalender dann aus</h2>${aiGridHtml()}
+        <h2 style="margin:14px 0 6px">Was sich verschiebt</h2>
+        <div class="aidiff">${ai.changed.slice(0,14).map(c=>`<div><b>${shortDay(c.d)}</b> ${c.add.length?`<span class="plus">＋ ${esc(c.add.slice(0,4).join(', '))}${c.add.length>4?' …':''}</span>`:''} ${c.rem.length?`<span class="minus">− ${esc(c.rem.slice(0,4).join(', '))}${c.rem.length>4?' …':''}</span>`:''}</div>`).join('')}
+        ${ai.changed.length>14?`<div class="muted small">… und ${ai.changed.length-14} weitere Tage</div>`:''}</div>`}
+      ${ai.rewriting ? `<h2 style="margin:14px 0 6px">Was soll anders sein?</h2><textarea style="min-height:80px" placeholder="z. B. „Aber den Samstag lieber frei lassen, Sonntag lernen“" oninput="ai.rewrite=this.value">${esc(ai.rewrite)}</textarea>` : ''}`;
+    foot = ai.rewriting
+      ? `<button class="btn" onclick="ai.rewriting=false;renderModal()">Zurück</button><button class="btn primary" onclick="aiRetry()">Neue Vorschau</button>`
+      : `<button class="btn" onclick="aiClose()">Verwerfen</button><button class="btn" onclick="ai.rewriting=true;renderModal()">Nochmal schreiben</button>${noChange?'':'<button class="btn primary" onclick="aiAccept()">Übernehmen</button>'}`;
+  }
+  return `<div class="modal-bg"><div class="modal" style="max-width:560px"><h2 style="margin:0 0 10px">✨ Plan anpassen</h2>
+    <p class="small muted" style="margin:-4px 0 10px">„${esc(ai.instruction)}“</p>${body}
+    <div class="row" style="justify-content:flex-end;margin-top:14px">${foot}</div></div></div>`;
+}
+function aiRetry(){
+  const t = (ai.rewrite||'').trim(); if(!t){ alert('Schreib kurz, was anders sein soll.'); return; }
+  ai.history.push({anweisung:ai.instruction, zusammenfassung:ai.summary || ai.question});
+  ai.instruction = t; ai.rewrite = ''; ai.rewriting = false; ai.status = 'loading'; renderModal(); aiRequest();
+}
+function aiAccept(){
+  if(!ai || !ai.proposed) return;
+  S = ai.proposed; save(); ai = null; aiDraft = ''; render();
+}
+function aiClose(){ ai = null; renderModal(); }
 
 /* Wischen im Kalender: links = nächster Monat, rechts = voriger Monat */
 let swipe = null;
