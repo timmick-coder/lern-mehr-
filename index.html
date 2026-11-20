@@ -230,13 +230,14 @@ function subjectSessions(sub){
   const list = [], topics = S.topics.filter(t=>t.subjectId===sub.id);
   for(let r=0;r<=sub.repeats;r++){
     for(const t of topics){
-      list.push({ key:`${t.id}:${r}:0`, subjectId:sub.id, topicId:t.id, name:t.name, round:r, part:0, parts:1, min:1 });
+      // min = Zählwert (1 Thema), w = Aufwand für die Planung: Lernen dauert etwa doppelt so lang wie Wiederholen
+      list.push({ key:`${t.id}:${r}:0`, subjectId:sub.id, topicId:t.id, name:t.name, round:r, part:0, parts:1, min:1, w: r===0 ? 2 : 1 });
     }
   }
   // Große Wiederholungen am Ende: je eine Sitzung über alle Themen des Fachs
   const nBig = topics.length ? Math.max(0, Math.min(3, Math.round(+sub.bigReviews)||0)) : 0;
   for(let i=0;i<nBig;i++){
-    list.push({ key:`${sub.id}:big:${i}`, subjectId:sub.id, topicId:null, big:true, round:99, part:0, parts:1, min:1,
+    list.push({ key:`${sub.id}:big:${i}`, subjectId:sub.id, topicId:null, big:true, round:99, part:0, parts:1, min:1, w:1,
       name: nBig>1 ? `Große Wiederholung ${i+1} von ${nBig}` : 'Große Wiederholung' });
   }
   return list;
@@ -289,11 +290,11 @@ function computePlan(){
       if(dd && p.avail.includes(dd)) (pins[id][dd] ||= []).push(s);        // erledigt: bleibt an seinem Tag
       else if(mv && p.avail.includes(mv.to)){
         (pins[id][mv.to] ||= []).push(s);
-        for(const f of mv.from) away[id][f] = (away[id][f]||0) + s.min;   // am alten Tag nicht wieder auffüllen
+        for(const f of mv.from) away[id][f] = (away[id][f]||0) + s.w;   // am alten Tag nicht wieder auffüllen
       } else if(p.resv[s.key]) (pins[id][p.resv[s.key]] ||= []).push(s);   // große Wiederholung: fester Platz am Ende
       else q[id].push(s);
     }
-    rest[id] = p.pending.filter(s=>!p.resv[s.key]).reduce((a,s)=>a+s.min,0);
+    rest[id] = p.pending.filter(s=>!p.resv[s.key]).reduce((a,s)=>a+s.w,0);          // Aufwand, nicht Anzahl
   }
   for(const d of dayList){
     const active = plans.filter(p=>p.avail.includes(d)).sort((a,b)=>a.sub.examDate.localeCompare(b.sub.examDate));
@@ -313,7 +314,7 @@ function computePlan(){
     for(const p of chosen){
       const id = p.sub.id, n = p.reg.length, i = p.reg.indexOf(d), last = i===n-1;
       let used = 0;
-      for(const s of (pins[id][d]||[])){ (out[d] ||= []).push({...s,done:!!S.done[s.key],moved:!!S.moves[s.key] && !S.done[s.key]}); used += s.min; if(!p.resv[s.key]) rest[id] -= s.min; }
+      for(const s of (pins[id][d]||[])){ (out[d] ||= []).push({...s,done:!!S.done[s.key],moved:!!S.moves[s.key] && !S.done[s.key]}); used += s.w; if(!p.resv[s.key]) rest[id] -= s.w; }
       if(i<0) continue;                                     // Tag der großen Wiederholungen: nur sie
       const w = j => 1 + p.k*(n>1 ? j/(n-1) : 0);          // Gewicht steigt Richtung Prüfung
       let sumW = 0; for(let j=i;j<n;j++) sumW += w(j);
@@ -324,8 +325,9 @@ function computePlan(){
       if(lighter){ target -= lighter; if(target<=0) continue; }
       while(q[id].length){
         const s = q[id][0];
-        if(used+s.min > target) break;
-        (out[d] ||= []).push({...s,done:!!S.done[s.key]}); used += s.min; rest[id] -= s.min; q[id].shift();
+        // Passt das Thema noch in den Tagesaufwand? Es kommt dran, wenn mindestens sein halber Aufwand noch frei ist.
+        if(used + s.w/2 > target) break;
+        (out[d] ||= []).push({...s,done:!!S.done[s.key]}); used += s.w; rest[id] -= s.w; q[id].shift();
       }
     }
   }
@@ -526,7 +528,7 @@ function viewSettings(){
     <div class="row" style="margin-top:10px"><button class="btn primary" onclick="openWizard()">＋ Fach hinzufügen</button></div></div>
 
   <div class="card"><h2>Planung</h2>
-    <p class="small muted" style="margin:0 0 12px">Die App verteilt deine Themen selbst auf die Tage bis zur Prüfung. Ein Thema ist erledigt, sobald du es abhakst – egal wie lange es dauert.</p>
+    <p class="small muted" style="margin:0 0 12px">Die App verteilt deine Themen selbst auf die Tage bis zur Prüfung. Zum ersten Lernen bekommst du weniger Themen pro Tag als später zum Wiederholen, denn Lernen braucht mehr Zeit. Ein Thema ist erledigt, sobald du es abhakst.</p>
     <label class="f">Fächer pro Tag
       <select onchange="setPerDay(+this.value)">${[[0,'Alle Fächer jeden Tag'],[1,'1 Fach pro Tag'],[2,'Bis zu 2 Fächer pro Tag'],[3,'Bis zu 3 Fächer pro Tag'],[4,'Bis zu 4 Fächer pro Tag']].map(([v,l])=>`<option value="${v}" ${(+S.subjectsPerDay||0)===v?'selected':''}>${l}</option>`).join('')}</select>
       <span class="small muted">Die Fächer wechseln sich ab. Jeden Tag kommen die dringendsten dran, die anderen bekommen dafür an ihren Tagen mehr.</span></label></div>
