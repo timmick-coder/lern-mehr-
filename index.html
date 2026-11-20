@@ -547,8 +547,8 @@ function overviewModalHtml(){
       <p class="small muted" style="margin:2px 0 10px">Jedes Thema ${rounds}× lernen${sub.examDate?` · Prüfung ${fmt(sub.examDate,{weekday:'short',day:'numeric',month:'long'})}`:''}</p></div>
       <button class="btn" onclick="closeOverview()" aria-label="Schließen">✕</button></div>
     <div class="bar"><div style="width:${total?Math.round(doneN/total*100):0}%;background:${hue(sub.id)}"></div></div>
-    <p class="small muted" style="margin:4px 0 10px">${doneN} von ${total} Durchgängen geschafft · Spalte 1 = Lernen, ab 2 = Wiederholungen · Datum = geplant bzw. erledigt am</p>
-    ${topics.length?`<div style="overflow-x:auto"><table class="ov"><thead><tr><th>THEMA</th>${Array.from({length:rounds},(_,r)=>`<th>${r+1}</th>`).join('')}</tr></thead>
+    <p class="small muted" style="margin:4px 0 10px">${doneN} von ${total} Durchgängen geschafft</p>
+    ${topics.length?`<div style="overflow-x:auto"><table class="ov"><thead><tr><th>THEMA</th>${Array.from({length:rounds},(_,r)=>`<th title="${r===0?'Lernen':'Wiederholung '+r}">${r===0?'L':'W'}</th>`).join('')}</tr></thead>
       <tbody>${topics.map(t=>`<tr><td>${esc(t.name)}</td>${Array.from({length:rounds},(_,r)=>`<td class="c">${cell(t,r)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:'<p class="muted">Noch keine Themen in diesem Fach.</p>'}
   </div></div>`;
 }
