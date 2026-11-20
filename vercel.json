@@ -1,8 +1,5 @@
 {
-  "functions": {
-    "api/plan-assist.js": { "maxDuration": 60 }
-  },
   "rewrites": [
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

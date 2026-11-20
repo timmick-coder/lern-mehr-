@@ -83,20 +83,6 @@ button.btn.danger{color:var(--danger)}
   box-shadow:0 8px 30px rgba(0,0,0,.3);animation:gifin .35s cubic-bezier(.3,1.5,.5,1);cursor:pointer;transition:opacity .45s,transform .45s}
 .gifpop.out{opacity:0;transform:translateX(-50%) translateY(14px)}
 .gifpop img{display:block;max-width:min(78vw,340px);max-height:40vh;border-radius:12px}
-.ag{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
-.ag .dow{text-align:center;font-size:.7rem;color:var(--muted);font-weight:600}
-.ac{min-height:50px;border:1px solid var(--line);border-radius:8px;padding:3px;font-size:.7rem;background:var(--bg);overflow:hidden}
-.ac .n{font-weight:700;display:block}
-.ac.free{background:var(--free)}
-.ac.ex{border-color:var(--danger);background:color-mix(in srgb,var(--danger) 16%,var(--bg))}
-.ac.chg{outline:2px solid var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--bg))}
-.dots i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:2px}
-.legchg{display:inline-block;width:12px;height:12px;border:2px solid var(--accent);border-radius:3px;vertical-align:-2px}
-.ainotes{margin:0;padding-left:20px;font-size:.9rem}
-.aidiff{font-size:.85rem;display:flex;flex-direction:column;gap:4px;max-height:28vh;overflow:auto}
-.aidiff .plus{color:var(--ok)}.aidiff .minus{color:var(--danger)}
-.spin{width:34px;height:34px;border:4px solid var(--line);border-top-color:var(--accent);border-radius:50%;margin:0 auto;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
 .ggrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;max-height:50vh;overflow:auto;-webkit-overflow-scrolling:touch}
 /* Quadratische Kacheln ohne aspect-ratio (ältere iPad-Safari-Versionen kennen es nicht) */
 .gcell{position:relative;display:block;width:100%;height:0;padding:0 0 100% 0;border-radius:10px;overflow:hidden;background:var(--bg);cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -274,7 +260,8 @@ function computePlan(){
     if(si.daysLeft<=0){ si.status='past'; continue; }
     info.pendingMin += pm;
     const avail = [];
-    for(let d=today; diffDays(d,sub.examDate)>0; d=addDays(d,1)) if(!S.freeDays.includes(d)) avail.push(d);
+    const from = sub.startDate && sub.startDate>today ? sub.startDate : today;      // „Lernen ab“: nicht vor diesem Tag anfangen
+    for(let d=from; diffDays(d,sub.examDate)>0; d=addDays(d,1)) if(!S.freeDays.includes(d)) avail.push(d);
     si.availDays = avail.length;
     plans.push({ sub, pending, avail, k:RAMP[sub.ramp] ?? 0 });
   }
@@ -444,7 +431,7 @@ function warnHtml(info){
   let h = '';
   const bad = S.subjects.filter(s=>info.subjects[s.id] && info.subjects[s.id].status==='noroom');
   if(bad.length){
-    h += `<div class="notice"><b>Es gibt keinen freien Lerntag mehr.</b><br>${bad.map(s=>`${esc(s.name)}: Vor der Prüfung ist kein Lerntag übrig.`).join('<br>')}<br><span class="small">Hebe Lernfrei-Tage auf oder prüfe das Prüfungsdatum.</span></div>`;
+    h += `<div class="notice"><b>Es gibt keinen freien Lerntag mehr.</b><br>${bad.map(s=>`${esc(s.name)}: Vor der Prüfung ist kein Lerntag übrig.`).join('<br>')}<br><span class="small">Hebe Lernfrei-Tage auf oder prüfe Startdatum und Prüfungsdatum.</span></div>`;
   }
   if(info.noDate.length) h += `<div class="notice">Für <b>${info.noDate.map(esc).join(', ')}</b> fehlt noch das Prüfungsdatum – ${info.noDate.length>1?'diese Fächer sind':'dieses Fach ist'} noch nicht im Plan.</div>`;
   return h;
@@ -468,7 +455,7 @@ function viewCal(plan){
   const title = calMonth.toLocaleDateString('de-DE',{month:'long',year:'numeric'});
   return `<h1>Kalender</h1>${warnHtml(plan.info)}${overviewHtml(plan.info)}
     <div class="card"><div class="cal-head"><button class="btn" onclick="moveMonth(-1)">‹</button><b>${title}</b><button class="btn" onclick="moveMonth(1)">›</button></div>
-    <div class="cal">${cells}</div></div>${dayDetail(plan)}${aiCardHtml()}${examsHtml()}`;
+    <div class="cal">${cells}</div></div>${dayDetail(plan)}${examsHtml()}`;
 }
 
 function dayDetail(plan){
@@ -486,12 +473,15 @@ function viewSettings(){
   const folders = S.subjects.map(sub=>{
     const ts = S.topics.filter(t=>t.subjectId===sub.id);
     const dl = sub.examDate ? diffDays(today,sub.examDate) : null;
-    const exam = sub.examDate ? `Prüfung ${fmt(sub.examDate,{day:'numeric',month:'short'})}${dl>0?` · noch ${dl} T.`:dl===0?' · heute':' · vorbei'}` : 'kein Prüfungsdatum';
+    const exam = (sub.examDate ? `Prüfung ${fmt(sub.examDate,{day:'numeric',month:'short'})}${dl>0?` · noch ${dl} T.`:dl===0?' · heute':' · vorbei'}` : 'kein Prüfungsdatum')
+      + (sub.startDate && sub.startDate>today ? ` · Start ${fmt(sub.startDate,{day:'numeric',month:'short'})}` : '');
     return `<details class="folder" data-s="${sub.id}" ${openSubj.has(sub.id)?'open':''} ontoggle="toggleSubj(this)">
       <summary><span class="fname"><span class="dot" style="background:${hue(sub.id)}"></span>${esc(sub.name)}</span><span class="small muted">${exam} · ${ts.length} ${ts.length===1?'Thema':'Themen'}</span></summary>
       <div class="grid" style="margin-bottom:14px">
         <label class="f">Name<input value="${esc(sub.name)}" onchange="setSub('${sub.id}','name',this.value)"></label>
         <label class="f">Prüfungsdatum<input type="date" value="${sub.examDate}" onchange="setSub('${sub.id}','examDate',this.value)"></label>
+        <label class="f">Lernen ab<input type="date" value="${sub.startDate||''}" onchange="setSub('${sub.id}','startDate',this.value)">
+          <span class="small muted">Erster Lerntag für dieses Fach. Leer = ab heute.</span></label>
         <details class="colors" data-s="${sub.id}" ${openColors.has(sub.id)?'open':''} ontoggle="toggleColors(this)">
           <summary>Farbe <span class="dot" style="background:${hue(sub.id)};margin:0 0 0 8px"></span> ›</summary>
           <div class="sw">${PALETTE.map(c=>`<button class="swb ${hue(sub.id)===c?'on':''}" style="background:${c}" onclick="pickColor('${sub.id}','${c}')" aria-label="Farbe wählen"></button>`).join('')}</div>
@@ -712,7 +702,7 @@ function pickMonth(n){ picker.month = new Date(picker.month.getFullYear(), picke
 function pickDay(d){ picker.to = d; renderModal(); }
 function closePicker(){ picker = null; renderModal(); }
 function confirmPick(){ const {key,from,to} = picker; picker = null; renderModal(); moveTaskTo(key,from,to,false); }
-function renderModal(){ const el = document.getElementById('modal'); if(el) el.innerHTML = ai ? aiModalHtml() : gs ? gifSearchHtml() : wiz ? wizardHtml() : picker ? pickerHtml() : overview ? overviewModalHtml() : ''; }
+function renderModal(){ const el = document.getElementById('modal'); if(el) el.innerHTML = gs ? gifSearchHtml() : wiz ? wizardHtml() : picker ? pickerHtml() : overview ? overviewModalHtml() : ''; }
 
 /* Überblick pro Fach: welches Thema wie oft gelernt/wiederholt wurde (wie die Lernplan-PDFs) */
 let overview = null;
@@ -911,7 +901,7 @@ function importData(file){
 let wiz = null;
 function openWizard(subjectId){
   const sub = subjectId ? subOf(subjectId) : null;
-  wiz = { step: sub?2:1, subjectId: sub?sub.id:null, name:'', examDate:'', repeats:3, ramp:'rising',
+  wiz = { step: sub?2:1, subjectId: sub?sub.id:null, name:'', examDate:'', startDate:'', repeats:3, ramp:'rising',
           text:'', fileLines:[], lines:[], busy:false, status:'' };
   renderModal();
 }
@@ -927,6 +917,7 @@ function wizNext(){
     if(!n){ alert('Bitte gib dem Fach einen Namen.'); return; }
     if(S.subjects.some(s=>s.name.toLowerCase()===n.toLowerCase())){ alert('Dieses Fach gibt es schon. Füge die Themen direkt im Fach über „＋ Themen hinzufügen“ hinzu.'); return; }
     if(wiz.examDate && wiz.examDate<=todayIso()){ alert('Das Prüfungsdatum muss in der Zukunft liegen.'); return; }
+    if(wiz.startDate && wiz.examDate && wiz.startDate>=wiz.examDate){ alert('„Lernen ab“ muss vor dem Prüfungsdatum liegen.'); return; }
     wiz.step = 2;
   } else if(wiz.step===2){
     if(wiz.busy){ alert('Die Dateien werden noch gelesen – einen Moment.'); return; }
@@ -948,7 +939,7 @@ function wizSave(){
   let sub = wiz.subjectId ? subOf(wiz.subjectId) : null;
   const items = wiz.lines.filter(l=>l.on && l.t.trim()).map(l=>({name:l.t}));
   if(!sub){
-    sub = newSubject(wiz.name.trim(), {examDate:wiz.examDate, repeats:wiz.repeats, ramp:wiz.ramp, color:nextColor(S.subjects)});
+    sub = newSubject(wiz.name.trim(), {examDate:wiz.examDate, startDate:wiz.startDate, repeats:wiz.repeats, ramp:wiz.ramp, color:nextColor(S.subjects)});
     S.subjects.push(sub);
   }
   addTopics(sub, items);
@@ -981,6 +972,8 @@ function wizardHtml(){
   if(wiz.step===1){
     body = `<div class="grid" style="gap:12px">
       <label class="f">Name des Fachs<input value="${esc(wiz.name)}" placeholder="z. B. Marketing" oninput="wiz.name=this.value" autofocus></label>
+      <label class="f">Lernen ab (optional)<input type="date" value="${wiz.startDate}" onchange="wiz.startDate=this.value">
+        <span class="small muted">Leer = ab heute.</span></label>
       <label class="f">Prüfungsdatum<input type="date" min="${addDays(todayIso(),1)}" value="${wiz.examDate}" onchange="wiz.examDate=this.value">
         <span class="small muted">Ohne Datum wird das Fach noch nicht eingeplant.</span></label>
       <label class="f">Wiederholungen
@@ -1014,183 +1007,6 @@ function wizardHtml(){
   </div></div>`;
 }
 
-
-/* ---------- Plan mit KI anpassen: Anweisung → Vorschau → bestätigen oder neu schreiben ---------- */
-let ai = null, aiDraft = '';
-const withState = (st, fn) => { const real = S; S = st; try{ return fn(); } finally{ S = real; } };
-const cloneState = () => JSON.parse(JSON.stringify(S));
-const shortDay = d => fmt(d,{weekday:'short',day:'numeric',month:'numeric'});
-
-function aiCardHtml(){
-  return `<div class="card"><h2 style="margin-bottom:4px">Plan mit KI anpassen</h2>
-    <p class="small muted" style="margin:0 0 10px">Schreib, was sich ändern soll. Du siehst zuerst eine Vorschau und entscheidest dann, ob du sie übernimmst.</p>
-    <textarea style="min-height:84px" placeholder="z. B. „Am Wochenende nichts lernen“ oder „Die Marketing-Prüfung ist jetzt am 12.12.“" oninput="aiDraft=this.value">${esc(aiDraft)}</textarea>
-    <div class="row" style="margin-top:8px"><button class="btn primary" onclick="aiStart()">✨ Vorschau erstellen</button></div></div>`;
-}
-function aiStart(){
-  const text = aiDraft.trim();
-  if(!text){ alert('Schreib zuerst, was sich am Plan ändern soll.'); return; }
-  if(!S.subjects.length){ alert('Lege zuerst ein Fach mit Prüfungsdatum an.'); return; }
-  ai = { instruction:text, history:[], status:'loading', rewrite:'', summary:'', question:'', month:null };
-  renderModal(); aiRequest();
-}
-function aiPayload(){
-  const plan = computePlan(), today = todayIso(), lines = [];
-  for(const [d,ts] of Object.entries(plan.days).sort()){
-    if(d<today) continue;
-    for(const t of ts){ if(t.done) continue; const sub = subOf(t.subjectId); lines.push(`${d}|${t.key}|${sub?sub.name:'?'}|${t.name}|${t.round===0?'L':'W'+t.round}`); }
-  }
-  return { heute:today, anweisung:ai.instruction, verlauf:ai.history,
-    faecher:S.subjects.map(s=>({id:s.id,name:s.name,pruefung:s.examDate||null,wiederholungen:s.repeats,lernverlauf:s.ramp})),
-    lernfrei:S.freeDays.slice().sort(), plan:lines };
-}
-async function aiRequest(){
-  try{
-    const r = await fetch('/api/plan-assist', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(aiPayload())});
-    let j = {}; try{ j = await r.json(); }catch(e){}
-    if(!ai) return;
-    if(!r.ok){
-      const msg = r.status===503 && j.fehler==='ki_nicht_eingerichtet' ? 'Die KI ist noch nicht eingerichtet (es fehlt der Schlüssel auf dem Server).'
-        : r.status===429 ? 'Zu viele Anfragen in kurzer Zeit. Warte einen Moment und versuch es nochmal.'
-        : r.status===404 ? 'Die KI gibt es nur in der Online-Version der App, nicht in der lokalen Datei.'
-        : 'Die KI ist gerade nicht erreichbar. Versuch es gleich nochmal.';
-      ai.status = 'error'; ai.error = msg; return renderModal();
-    }
-    ai.summary = j.zusammenfassung || '';
-    if(j.rueckfrage && !(j.operationen||[]).length){ ai.status = 'question'; ai.question = j.rueckfrage; return renderModal(); }
-    const res = aiApplyOps(j.operationen || []);
-    ai.proposed = res.state; ai.notes = res.notes; ai.errors = res.errors;
-    ai.newPlan = withState(res.state, computePlan); ai.oldPlan = computePlan();
-    ai.changed = aiDiff(ai.oldPlan, ai.newPlan);
-    const first = ai.changed[0] ? parse(ai.changed[0].d) : new Date(); ai.month = new Date(first.getFullYear(), first.getMonth(), 1, 12);
-    ai.status = 'preview'; renderModal();
-  }catch(e){
-    if(!ai) return;
-    ai.status = 'error'; ai.error = location.protocol==='file:' ? 'Die KI gibt es nur in der Online-Version der App, nicht in der lokalen Datei.' : 'Keine Verbindung. Prüfe dein Internet und versuch es nochmal.'; renderModal();
-  }
-}
-
-/* Änderungen der KI prüfen und auf eine KOPIE des Plans anwenden (nichts wird ungeprüft übernommen) */
-function aiApplyOps(ops){
-  const st = cloneState(), today = todayIso(), notes = [], errors = [];
-  const base = computePlan(), where = {}, info = {};
-  for(const [d,ts] of Object.entries(base.days)) for(const t of ts) if(!t.done && d>=today){ where[t.key] = d; info[t.key] = t; }
-  const validDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') && !isNaN(parse(d));
-  const exams = () => st.subjects.map(s=>s.examDate).filter(Boolean).sort();
-  const freeOn = [], freeOff = [], moved = [], subj = [];
-  for(const op of ops.slice(0,200)){
-    if(!op || typeof op!=='object') continue;
-    if(op.typ==='lernfrei_setzen' || op.typ==='lernfrei_aufheben'){
-      for(const d of op.daten||[]){
-        if(!validDate(d) || d<today){ errors.push(`${d||'?'}: Tag liegt in der Vergangenheit oder ist ungültig.`); continue; }
-        if(op.typ==='lernfrei_setzen'){ if(exams().length && d>=exams().pop()){ errors.push(`${shortDay(d)}: Das ist nach der letzten Prüfung.`); continue; } if(!st.freeDays.includes(d)){ st.freeDays.push(d); freeOn.push(d); } }
-        else { const i = st.freeDays.indexOf(d); if(i>=0){ st.freeDays.splice(i,1); freeOff.push(d); } }
-      }
-    } else if(op.typ==='thema_verschieben'){
-      const t = info[op.schluessel], to = op.ziel;
-      if(!t){ errors.push('Ein Thema aus dem Vorschlag gibt es im Plan nicht (mehr).'); continue; }
-      const sub = st.subjects.find(s=>s.id===t.subjectId);
-      if(!validDate(to) || to<today){ errors.push(`„${t.name}“: Zieltag ungültig.`); continue; }
-      if(!sub || !sub.examDate || to>=sub.examDate){ errors.push(`„${t.name}“: Der Zieltag liegt nicht vor der Prüfung (${sub&&sub.examDate?shortDay(sub.examDate):'kein Datum'}).`); continue; }
-      if(st.freeDays.includes(to)){ errors.push(`„${t.name}“: ${shortDay(to)} ist lernfrei.`); continue; }
-      const prev = st.moves[op.schluessel], from = where[op.schluessel];
-      st.moves[op.schluessel] = { to, from:[...(prev?prev.from:[]), from].filter(x=>x!==to) };
-      moved.push({name:t.name, sub:sub.name, from, to});
-    } else if(op.typ==='verschiebung_aufheben'){
-      if(op.schluessel==='alle'){ const n = Object.keys(st.moves).length; if(n){ st.moves = {}; subj.push('Alle manuellen Verschiebungen aufgehoben.'); } }
-      else if(st.moves[op.schluessel]){ delete st.moves[op.schluessel]; subj.push('Eine Verschiebung aufgehoben.'); }
-    } else if(op.typ==='fach_aendern'){
-      const s = st.subjects.find(x=>x.id===op.fach_id);
-      if(!s){ errors.push('Ein Fach aus dem Vorschlag gibt es nicht.'); continue; }
-      if(op.pruefungsdatum!==undefined){
-        if(!validDate(op.pruefungsdatum) || op.pruefungsdatum<=today){ errors.push(`${s.name}: Das neue Prüfungsdatum muss in der Zukunft liegen.`); }
-        else { subj.push(`${s.name}: Prüfung am ${fmt(op.pruefungsdatum,{weekday:'short',day:'numeric',month:'long'})} (vorher ${s.examDate?shortDay(s.examDate):'kein Datum'}).`); s.examDate = op.pruefungsdatum; }
-      }
-      if(op.wiederholungen!==undefined){
-        const n = Math.round(+op.wiederholungen);
-        if(n>=0 && n<=5){ subj.push(`${s.name}: ${n===0?'keine Wiederholungen':n+' Wiederholungen'} (vorher ${s.repeats}).`); s.repeats = n; } else errors.push(`${s.name}: Wiederholungen müssen zwischen 0 und 5 liegen.`);
-      }
-      if(op.lernverlauf!==undefined){
-        if(RAMP[op.lernverlauf]!==undefined){ subj.push(`${s.name}: Lernverlauf „${RAMP_LABEL[op.lernverlauf]}“.`); s.ramp = op.lernverlauf; } else errors.push(`${s.name}: Unbekannter Lernverlauf.`);
-      }
-    }
-  }
-  if(freeOn.length) notes.push(`Lernfrei: ${freeOn.sort().map(shortDay).join(' · ')}`);
-  if(freeOff.length) notes.push(`Wieder Lernen: ${freeOff.sort().map(shortDay).join(' · ')}`);
-  for(const m of moved) notes.push(`„${m.name}“ (${m.sub}): ${shortDay(m.from)} → ${shortDay(m.to)}`);
-  notes.push(...subj);
-  return { state:st, notes, errors };
-}
-
-/* Unterschied zwischen altem und neuem Plan, pro Tag */
-function aiDiff(oldPlan,newPlan){
-  const today = todayIso(), days = new Set([...Object.keys(oldPlan.days),...Object.keys(newPlan.days)]), out = [];
-  const keys = (p,d) => new Map((p.days[d]||[]).filter(t=>!t.done).map(t=>[t.key,`${t.name}${t.round?' (W'+t.round+')':''}`]));
-  for(const d of [...days].sort()){
-    if(d<today) continue;
-    const a = keys(oldPlan,d), b = keys(newPlan,d);
-    const add = [...b].filter(([k])=>!a.has(k)).map(([,n])=>n), rem = [...a].filter(([k])=>!b.has(k)).map(([,n])=>n);
-    if(add.length || rem.length) out.push({d, add, rem});
-  }
-  return out;
-}
-
-function aiGridHtml(){
-  const st = ai.proposed, plan = ai.newPlan, changed = new Set(ai.changed.map(c=>c.d));
-  const y = ai.month.getFullYear(), m = ai.month.getMonth();
-  const offset = (new Date(y,m,1,12).getDay()+6)%7, nDays = new Date(y,m+1,0).getDate();
-  let cells = ['Mo','Di','Mi','Do','Fr','Sa','So'].map(d=>`<div class="dow">${d}</div>`).join('') + '<div></div>'.repeat(offset);
-  for(let d=1; d<=nDays; d++){
-    const s = `${y}-${pad(m+1)}-${pad(d)}`, ts = (plan.days[s]||[]), free = st.freeDays.includes(s), ex = st.subjects.some(x=>x.examDate===s);
-    const dots = [...new Set(ts.map(t=>t.subjectId))].slice(0,4).map(id=>`<i style="background:${hue(id)}"></i>`).join('');
-    cells += `<div class="ac ${changed.has(s)?'chg':''} ${free?'free':''} ${ex?'ex':''}"><span class="n">${d}</span>${ex?'<span class="small">Prüfung</span>':free?'<span class="small muted">frei</span>':ts.length?`<span class="dots">${dots}</span><span class="small muted">${ts.length}</span>`:''}</div>`;
-  }
-  const title = ai.month.toLocaleDateString('de-DE',{month:'long',year:'numeric'});
-  return `<div class="cal-head"><button class="btn" onclick="aiMonth(-1)">‹</button><b>${title}</b><button class="btn" onclick="aiMonth(1)">›</button></div><div class="ag">${cells}</div>
-    <p class="small muted" style="margin:6px 0 0"><span class="legchg"></span> = hier ändert sich etwas</p>`;
-}
-function aiMonth(n){ ai.month = new Date(ai.month.getFullYear(), ai.month.getMonth()+n, 1, 12); renderModal(); }
-
-function aiModalHtml(){
-  let body = '', foot = '';
-  if(ai.status==='loading'){
-    body = `<div class="empty" style="padding:30px 0"><div class="spin"></div><p class="muted" style="margin:14px 0 0">Die KI plant um …</p></div>`;
-    foot = `<button class="btn" onclick="aiClose()">Abbrechen</button>`;
-  } else if(ai.status==='error'){
-    body = `<p>${esc(ai.error)}</p>`; foot = `<button class="btn" onclick="aiClose()">Schließen</button><button class="btn primary" onclick="ai.status='loading';renderModal();aiRequest()">Nochmal versuchen</button>`;
-  } else if(ai.status==='question'){
-    body = `<p style="margin:0 0 6px"><b>Eine Rückfrage:</b></p><p>${esc(ai.question)}</p>
-      <textarea style="min-height:80px" placeholder="Deine Antwort oder eine genauere Anweisung …" oninput="ai.rewrite=this.value">${esc(ai.rewrite)}</textarea>`;
-    foot = `<button class="btn" onclick="aiClose()">Abbrechen</button><button class="btn primary" onclick="aiRetry()">Antworten</button>`;
-  } else {
-    const noChange = !ai.changed.length;
-    body = `<p style="margin:0 0 8px">${esc(ai.summary)}</p>
-      ${ai.notes.length ? `<ul class="ainotes">${ai.notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ul>` : ''}
-      ${ai.errors.length ? `<div class="notice" style="margin-top:8px"><b>Das ging nicht:</b><br>${ai.errors.map(esc).join('<br>')}</div>` : ''}
-      ${noChange ? '<p class="muted">Mit diesem Vorschlag ändert sich nichts am Plan.</p>' : `
-        <h2 style="margin:14px 0 8px">So sieht dein Kalender dann aus</h2>${aiGridHtml()}
-        <h2 style="margin:14px 0 6px">Was sich verschiebt</h2>
-        <div class="aidiff">${ai.changed.slice(0,14).map(c=>`<div><b>${shortDay(c.d)}</b> ${c.add.length?`<span class="plus">＋ ${esc(c.add.slice(0,4).join(', '))}${c.add.length>4?' …':''}</span>`:''} ${c.rem.length?`<span class="minus">− ${esc(c.rem.slice(0,4).join(', '))}${c.rem.length>4?' …':''}</span>`:''}</div>`).join('')}
-        ${ai.changed.length>14?`<div class="muted small">… und ${ai.changed.length-14} weitere Tage</div>`:''}</div>`}
-      ${ai.rewriting ? `<h2 style="margin:14px 0 6px">Was soll anders sein?</h2><textarea style="min-height:80px" placeholder="z. B. „Aber den Samstag lieber frei lassen, Sonntag lernen“" oninput="ai.rewrite=this.value">${esc(ai.rewrite)}</textarea>` : ''}`;
-    foot = ai.rewriting
-      ? `<button class="btn" onclick="ai.rewriting=false;renderModal()">Zurück</button><button class="btn primary" onclick="aiRetry()">Neue Vorschau</button>`
-      : `<button class="btn" onclick="aiClose()">Verwerfen</button><button class="btn" onclick="ai.rewriting=true;renderModal()">Nochmal schreiben</button>${noChange?'':'<button class="btn primary" onclick="aiAccept()">Übernehmen</button>'}`;
-  }
-  return `<div class="modal-bg"><div class="modal" style="max-width:560px"><h2 style="margin:0 0 10px">✨ Plan anpassen</h2>
-    <p class="small muted" style="margin:-4px 0 10px">„${esc(ai.instruction)}“</p>${body}
-    <div class="row" style="justify-content:flex-end;margin-top:14px">${foot}</div></div></div>`;
-}
-function aiRetry(){
-  const t = (ai.rewrite||'').trim(); if(!t){ alert('Schreib kurz, was anders sein soll.'); return; }
-  ai.history.push({anweisung:ai.instruction, zusammenfassung:ai.summary || ai.question});
-  ai.instruction = t; ai.rewrite = ''; ai.rewriting = false; ai.status = 'loading'; renderModal(); aiRequest();
-}
-function aiAccept(){
-  if(!ai || !ai.proposed) return;
-  S = ai.proposed; save(); ai = null; aiDraft = ''; render();
-}
-function aiClose(){ ai = null; renderModal(); }
 
 /* Wischen im Kalender: links = nächster Monat, rechts = voriger Monat */
 let swipe = null;
