@@ -110,6 +110,7 @@ button.btn.danger{color:var(--danger)}
 .ov th:not(:first-child){text-align:center;width:54px}
 .ov td{padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
 .ov td.c{text-align:center;line-height:1.2}
+.ov tr.bigrow td{background:color-mix(in srgb,var(--accent) 8%,transparent);border-top:2px solid var(--line)}
 .ck{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border:2px solid var(--muted);border-radius:5px;font-size:.8rem;font-weight:700}
 .ck.on{background:var(--ok);border-color:var(--ok);color:#fff}
 .ck.half{border-color:var(--ok);color:var(--ok)}
@@ -222,7 +223,7 @@ const nAufg = n => `${n} ${n===1?'Aufgabe':'Aufgaben'}`;
 const RAMP = { flat:0, rising:1, strong:3 };
 const RAMP_LABEL = { flat:'Gleichmäßig', rising:'Steigend', strong:'Stark steigend' };
 const subOf = id => S.subjects.find(s=>s.id===id);
-function roundLabel(r){ return r===0 ? 'Lernen' : `Wiederholung ${r}`; }
+function roundLabel(r){ return r===99 ? 'Alle Themen' : r===0 ? 'Lernen' : `Wiederholung ${r}`; }
 
 function subjectSessions(sub){
   // Jedes Thema = eine Aufgabe pro Durchgang (Lernen + Wiederholungen); „min“ ist nur das Gewicht 1
@@ -231,6 +232,12 @@ function subjectSessions(sub){
     for(const t of topics){
       list.push({ key:`${t.id}:${r}:0`, subjectId:sub.id, topicId:t.id, name:t.name, round:r, part:0, parts:1, min:1 });
     }
+  }
+  // Große Wiederholungen am Ende: je eine Sitzung über alle Themen des Fachs
+  const nBig = topics.length ? Math.max(0, Math.min(3, Math.round(+sub.bigReviews)||0)) : 0;
+  for(let i=0;i<nBig;i++){
+    list.push({ key:`${sub.id}:big:${i}`, subjectId:sub.id, topicId:null, big:true, round:99, part:0, parts:1, min:1,
+      name: nBig>1 ? `Große Wiederholung ${i+1} von ${nBig}` : 'Große Wiederholung' });
   }
   return list;
 }
@@ -264,7 +271,11 @@ function computePlan(){
     const from = sub.startDate && sub.startDate>today ? sub.startDate : today;      // „Lernen ab“: nicht vor diesem Tag anfangen
     for(let d=from; diffDays(d,sub.examDate)>0; d=addDays(d,1)) if(!S.freeDays.includes(d)) avail.push(d);
     si.availDays = avail.length;
-    plans.push({ sub, pending, avail, k:RAMP[sub.ramp] ?? 0 });
+    // Große Wiederholungen: die letzten Lerntage vor der Prüfung gehören ihnen (mindestens ein Tag bleibt für die normalen Themen)
+    const bigs = pending.filter(s=>s.big && !S.done[s.key] && !(S.moves[s.key] && avail.includes(S.moves[s.key].to)));
+    const m = Math.min(bigs.length, Math.max(0, avail.length-1)), resv = {};
+    bigs.slice(bigs.length-m).forEach((s,i)=>{ resv[s.key] = avail[avail.length-m+i]; });
+    plans.push({ sub, pending, avail, reg:avail.slice(0, avail.length-m), resv, k:RAMP[sub.ramp] ?? 0 });
   }
   const dayList = [...new Set(plans.flatMap(p=>p.avail))].sort();
 
@@ -279,17 +290,18 @@ function computePlan(){
       else if(mv && p.avail.includes(mv.to)){
         (pins[id][mv.to] ||= []).push(s);
         for(const f of mv.from) away[id][f] = (away[id][f]||0) + s.min;   // am alten Tag nicht wieder auffüllen
-      } else q[id].push(s);
+      } else if(p.resv[s.key]) (pins[id][p.resv[s.key]] ||= []).push(s);   // große Wiederholung: fester Platz am Ende
+      else q[id].push(s);
     }
-    rest[id] = p.pending.reduce((a,s)=>a+s.min,0);
+    rest[id] = p.pending.filter(s=>!p.resv[s.key]).reduce((a,s)=>a+s.min,0);
   }
   for(const d of dayList){
     const active = plans.filter(p=>p.avail.includes(d)).sort((a,b)=>a.sub.examDate.localeCompare(b.sub.examDate));
     // Nicht jedes Fach jeden Tag: nur die dringendsten (plus verschobene und Fächer am letzten Lerntag) kommen dran
-    const withWork = active.filter(p=>q[p.sub.id].length || (pins[p.sub.id][d]||[]).length);
+    const withWork = active.filter(p=>(q[p.sub.id].length && p.reg.includes(d)) || (pins[p.sub.id][d]||[]).length);
     const perDay = +S.subjectsPerDay || 0, selecting = perDay>0 && withWork.length>perDay;
-    const isLast = p => p.avail.indexOf(d) === p.avail.length-1;
-    const urg = p => rest[p.sub.id] / (p.avail.length-p.avail.indexOf(d));       // offene Themen pro verbleibendem Tag
+    const isLast = p => p.reg.indexOf(d) === p.reg.length-1;
+    const urg = p => rest[p.sub.id] / Math.max(1, p.reg.length-p.reg.indexOf(d));       // offene Themen pro verbleibendem Tag
     let chosen = withWork;
     if(selecting){
       const forced = withWork.filter(p=>(pins[p.sub.id][d]||[]).length || isLast(p));
@@ -299,14 +311,15 @@ function computePlan(){
     }
     const share = perDay>0 ? Math.min(1, perDay/Math.max(1,withWork.length)) : 1;
     for(const p of chosen){
-      const id = p.sub.id, n = p.avail.length, i = p.avail.indexOf(d), last = i===n-1;
+      const id = p.sub.id, n = p.reg.length, i = p.reg.indexOf(d), last = i===n-1;
+      let used = 0;
+      for(const s of (pins[id][d]||[])){ (out[d] ||= []).push({...s,done:!!S.done[s.key],moved:!!S.moves[s.key] && !S.done[s.key]}); used += s.min; if(!p.resv[s.key]) rest[id] -= s.min; }
+      if(i<0) continue;                                     // Tag der großen Wiederholungen: nur sie
       const w = j => 1 + p.k*(n>1 ? j/(n-1) : 0);          // Gewicht steigt Richtung Prüfung
       let sumW = 0; for(let j=i;j<n;j++) sumW += w(j);
       let target = Math.round(rest[id]*w(i)/(sumW*share));
       if(selecting) target = Math.max(1,target);            // wer drankommt, lernt auch etwas
       if(last) target = rest[id];                           // am letzten Lerntag muss alles Übrige untergebracht werden
-      let used = 0;
-      for(const s of (pins[id][d]||[])){ (out[d] ||= []).push({...s,done:!!S.done[s.key],moved:!!S.moves[s.key] && !S.done[s.key]}); used += s.min; rest[id] -= s.min; }
       const lighter = last ? 0 : (away[id][d] || 0);
       if(lighter){ target -= lighter; if(target<=0) continue; }
       while(q[id].length){
@@ -489,6 +502,9 @@ function viewSettings(){
         </details>
         <label class="f">Wiederholungen
           <select onchange="setSub('${sub.id}','repeats',+this.value)">${[0,1,2,3,4,5].map(n=>`<option value="${n}" ${sub.repeats===n?'selected':''}>${n===0?'keine':n+'×'}</option>`).join('')}</select></label>
+        <label class="f">Große Wiederholungen am Ende
+          <select onchange="setSub('${sub.id}','bigReviews',+this.value)">${[0,1,2,3].map(n=>`<option value="${n}" ${(+sub.bigReviews||0)===n?'selected':''}>${n===0?'keine':n+'×'}</option>`).join('')}</select>
+          <span class="small muted">An den letzten Lerntagen vor der Prüfung: je ein Tag, an dem du das ganze Fach wiederholst.</span></label>
         <label class="f">Lernverlauf
           <select onchange="setSub('${sub.id}','ramp',this.value)">${Object.entries(RAMP_LABEL).map(([k,v])=>`<option value="${k}" ${sub.ramp===k?'selected':''}>${v}</option>`).join('')}</select>
           <span class="small muted">„Steigend“: je näher die Prüfung, desto mehr pro Tag</span></label>
@@ -755,8 +771,11 @@ function overviewModalHtml(){
     const next = info.filter(i=>!i.done).map(i=>i.d).sort()[0];
     return `<span class="ck ${nDone?'half':''}">${nDone?'½':''}</span>${next?`<div class="small muted">${short(next)}</div>`:''}`;
   };
-  let doneN = 0; for(const t of topics) for(let r=0;r<rounds;r++){ const ss = subjectSessions(sub).filter(s=>s.topicId===t.id && s.round===r); if(ss.length && ss.every(s=>S.done[s.key])) doneN++; }
-  const total = topics.length*rounds;
+  const bigs = subjectSessions(sub).filter(s=>s.big);
+  const bigCell = s => { const i = where[s.key]; if(!i) return '<span class="muted">–</span>';
+    return i.done ? `<span class="ck on">✓</span><div class="small muted">${short(i.d)}</div>` : `<span class="ck"></span><div class="small muted">${short(i.d)}</div>`; };
+  let doneN = bigs.filter(s=>S.done[s.key]).length; for(const t of topics) for(let r=0;r<rounds;r++){ const ss = subjectSessions(sub).filter(s=>s.topicId===t.id && s.round===r); if(ss.length && ss.every(s=>S.done[s.key])) doneN++; }
+  const total = topics.length*rounds + bigs.length;
   return `<div class="modal-bg" onclick="if(event.target===this)closeOverview()"><div class="modal" style="max-width:560px">
     <div class="row" style="justify-content:space-between;align-items:flex-start"><div><h2 style="margin:0">${esc(sub.name)}</h2>
       <p class="small muted" style="margin:2px 0 10px">Jedes Thema ${rounds}× lernen${sub.examDate?` · Prüfung ${fmt(sub.examDate,{weekday:'short',day:'numeric',month:'long'})}`:''}</p></div>
@@ -764,7 +783,8 @@ function overviewModalHtml(){
     <div class="bar"><div style="width:${total?Math.round(doneN/total*100):0}%;background:${hue(sub.id)}"></div></div>
     <p class="small muted" style="margin:4px 0 10px">${doneN} von ${total} Durchgängen geschafft</p>
     ${topics.length?`<div style="overflow-x:auto"><table class="ov"><thead><tr><th>THEMA</th>${Array.from({length:rounds},(_,r)=>`<th title="${r===0?'Lernen':'Wiederholung '+r}">${r===0?'L':'W'}</th>`).join('')}</tr></thead>
-      <tbody>${topics.map(t=>`<tr><td>${esc(t.name)}</td>${Array.from({length:rounds},(_,r)=>`<td class="c">${cell(t,r)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:'<p class="muted">Noch keine Themen in diesem Fach.</p>'}
+      <tbody>${topics.map(t=>`<tr><td>${esc(t.name)}</td>${Array.from({length:rounds},(_,r)=>`<td class="c">${cell(t,r)}</td>`).join('')}</tr>`).join('')}
+        ${bigs.map(s=>`<tr class="bigrow"><td><b>${esc(s.name)}</b><div class="small muted">alle Themen</div></td><td class="c" colspan="${rounds}">${bigCell(s)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Noch keine Themen in diesem Fach.</p>'}
   </div></div>`;
 }
 function pickerHtml(){
@@ -934,7 +954,7 @@ function importData(file){
 let wiz = null;
 function openWizard(subjectId){
   const sub = subjectId ? subOf(subjectId) : null;
-  wiz = { step: sub?2:1, subjectId: sub?sub.id:null, name:'', examDate:'', startDate:'', repeats:3, ramp:'rising',
+  wiz = { step: sub?2:1, subjectId: sub?sub.id:null, name:'', examDate:'', startDate:'', repeats:3, bigReviews:0, ramp:'rising',
           text:'', fileLines:[], lines:[], busy:false, status:'' };
   renderModal();
 }
@@ -972,7 +992,7 @@ function wizSave(){
   let sub = wiz.subjectId ? subOf(wiz.subjectId) : null;
   const items = wiz.lines.filter(l=>l.on && l.t.trim()).map(l=>({name:l.t}));
   if(!sub){
-    sub = newSubject(wiz.name.trim(), {examDate:wiz.examDate, startDate:wiz.startDate, repeats:wiz.repeats, ramp:wiz.ramp, color:nextColor(S.subjects)});
+    sub = newSubject(wiz.name.trim(), {examDate:wiz.examDate, startDate:wiz.startDate, repeats:wiz.repeats, bigReviews:wiz.bigReviews, ramp:wiz.ramp, color:nextColor(S.subjects)});
     S.subjects.push(sub);
   }
   addTopics(sub, items);
@@ -1011,6 +1031,9 @@ function wizardHtml(){
         <span class="small muted">Ohne Datum wird das Fach noch nicht eingeplant.</span></div>
       <label class="f">Wiederholungen
         <select onchange="wiz.repeats=+this.value">${[0,1,2,3,4,5].map(n=>`<option value="${n}" ${wiz.repeats===n?'selected':''}>${n===0?'keine':n+'×'}</option>`).join('')}</select></label>
+      <label class="f">Große Wiederholungen am Ende
+        <select onchange="wiz.bigReviews=+this.value">${[0,1,2,3].map(n=>`<option value="${n}" ${wiz.bigReviews===n?'selected':''}>${n===0?'keine':n+'×'}</option>`).join('')}</select>
+        <span class="small muted">An den letzten Lerntagen vor der Prüfung: je ein Tag mit dem ganzen Fach.</span></label>
       <label class="f">Lernverlauf
         <select onchange="wiz.ramp=this.value">${Object.entries(RAMP_LABEL).map(([k,v])=>`<option value="${k}" ${wiz.ramp===k?'selected':''}>${v}</option>`).join('')}</select></label></div>`;
     foot = `<button class="btn" onclick="wizClose()">Abbrechen</button><button class="btn primary" onclick="wizNext()">Weiter</button>`;
