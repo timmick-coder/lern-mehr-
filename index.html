@@ -124,6 +124,8 @@ button.btn.danger{color:var(--danger)}
 .wlist{max-height:46vh;overflow:auto;padding-right:2px}
 .tlist{margin:0 0 4px;padding-left:22px;color:var(--muted);font-size:.9rem}
 .tlist li{padding:2px 0}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:96;max-width:calc(100% - 32px);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:.9rem;text-align:center;transition:opacity .45s}
+.toast.out{opacity:0}
 .datebtn{width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:500}
 .dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:8px;vertical-align:-1px}
 .sw{display:flex;gap:8px;flex-wrap:wrap;padding-top:4px}
@@ -476,7 +478,9 @@ function viewCal(plan){
       ${tasks.length&&!free?`<span class="muted m">${tasks.filter(t=>t.done).length}/${tasks.length}</span>`:''}</button>`;
   }
   const title = calMonth.toLocaleDateString('de-DE',{month:'long',year:'numeric'});
-  return `<h1>Kalender</h1>${warnHtml(plan.info)}${overviewHtml(plan.info)}
+  return `<div class="row" style="justify-content:space-between;margin-bottom:8px"><h1 style="margin:0">Kalender</h1>
+      <button class="btn" onclick="replan()" title="Plan an deine Änderungen anpassen"><span class="rp">↻</span> Neu planen</button></div>
+    ${warnHtml(plan.info)}${overviewHtml(plan.info)}
     <div class="card"><div class="cal-head"><button class="btn" onclick="moveMonth(-1)">‹</button><b>${title}</b><button class="btn" onclick="moveMonth(1)">›</button></div>
     <div class="cal">${cells}</div></div>${dayDetail(plan)}${examsHtml()}`;
 }
@@ -567,6 +571,20 @@ function toggleColors(el){ el.open ? openColors.add(el.dataset.s) : openColors.d
 function pickColor(id,c){ openColors.delete(id); setSub(id,'color',c); }       // nach der Wahl klappt die Auswahl wieder zu
 function toggleTopics(el){ el.open ? openTopics.add(el.dataset.s) : openTopics.delete(el.dataset.s); }
 function go(p){ page=p; render(); }
+/* Plan neu berechnen: von dir verschobene Themen bleiben an ihrem Tag, erledigte Themen bleiben abgehakt */
+function toast(t){
+  document.querySelectorAll('.toast').forEach(e=>e.remove());
+  const el = document.createElement('div'); el.className = 'toast'; el.textContent = t; document.body.appendChild(el);
+  setTimeout(()=>el.classList.add('out'), 2600); setTimeout(()=>el.remove(), 3100);
+}
+function replan(){
+  // Nur Verschiebungen, die gar nicht mehr möglich sind (Tag vorbei, Thema gelöscht), werden aufgeräumt – alle anderen bleiben, wo du sie hingelegt hast
+  const today = todayIso(), keys = new Set(allSessions().map(s=>s.key));
+  for(const [k,m] of Object.entries(S.moves)) if(!keys.has(k) || S.done[k] || m.to<today) delete S.moves[k];
+  save(); render();
+  const done = allSessions().filter(s=>S.done[s.key]).length, moved = Object.keys(S.moves).length;
+  toast(`Plan neu berechnet · ${done} erledigt${done===1?'es Thema bleibt':'e Themen bleiben'} abgehakt${moved?`, ${moved} verschoben${moved===1?'es bleibt':'e bleiben'} an ihrem Tag`:''}`);
+}
 /* Abhaken: die Aufgabe bleibt an dem Tag stehen, an dem sie geplant war (auch im Voraus erledigt) */
 function toggleDone(key,day){
   if(S.done[key]) delete S.done[key]; else { S.done[key]=day||todayIso(); delete S.moves[key]; celebrate = key; }
