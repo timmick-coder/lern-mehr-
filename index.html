@@ -126,6 +126,10 @@ button.btn.danger{color:var(--danger)}
 .tlist li{padding:2px 0}
 .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:96;max-width:calc(100% - 32px);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:.9rem;text-align:center;transition:opacity .45s}
 .toast.out{opacity:0}
+.day{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.day.dragsrc{opacity:.5;outline:2px dashed var(--accent)}
+.day.dgover{outline:3px solid var(--accent);background:color-mix(in srgb,var(--accent) 18%,var(--bg))}
+.dgghost{position:fixed;z-index:120;pointer-events:none;background:var(--accent);color:var(--accent-text);padding:6px 12px;border-radius:999px;font-size:.85rem;font-weight:600;transform:translate(-50%,-150%)}
 .datebtn{width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:500}
 .dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:8px;vertical-align:-1px}
 .sw{display:flex;gap:8px;flex-wrap:wrap;padding-top:4px}
@@ -473,7 +477,7 @@ function viewCal(plan){
     const tasks = plan.days[s] || [], free = S.freeDays.includes(s), ex = examsOn(s);
     const show = ex.length ? 2 : 3;
     const chips = tasks.slice(0,show).map(t=>`<span class="chip ${t.done?'d':''}" style="--c:${hue(t.subjectId)}">${esc(t.name)}</span>`).join('') + (tasks.length>show?`<span class="muted">+${tasks.length-show}</span>`:'');
-    cells += `<button class="day ${free?'free':''} ${s===today?'today':''} ${s===selDay?'sel':''} ${ex.length?'exam':''}" onclick="selectDay('${s}')">
+    cells += `<button class="day ${free?'free':''} ${s===today?'today':''} ${s===selDay?'sel':''} ${ex.length?'exam':''}" data-day="${s}" onclick="selectDay('${s}')">
       <span class="n">${d}</span>${ex.length?`<span class="chip" style="--c:var(--danger)">${ex.map(esc).join(', ')}</span>`:''}${free?'<span class="muted">frei</span>':chips}
       ${tasks.length&&!free?`<span class="muted m">${tasks.filter(t=>t.done).length}/${tasks.length}</span>`:''}</button>`;
   }
@@ -486,7 +490,7 @@ function viewCal(plan){
 }
 
 function dayDetail(plan){
-  if(!selDay) return '<p class="muted small" style="text-align:center">Tippe auf einen Tag für Details oder um ihn lernfrei zu markieren.</p>';
+  if(!selDay) return '<p class="muted small" style="text-align:center">Tippe auf einen Tag für Details oder um ihn lernfrei zu markieren.<br>Halte einen Tag gedrückt und ziehe ihn auf einen anderen, um alle Themen zu verschieben.</p>';
   const today = todayIso(), tasks = plan.days[selDay] || [], free = S.freeDays.includes(selDay);
   const ex = examsOn(selDay), canToggle = selDay>=today && selDay<lastExam();
   return `<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">${fmt(selDay,{weekday:'long',day:'numeric',month:'long'})}</h2>
@@ -851,7 +855,7 @@ function moveTaskTo(key,from,to,ask=true){
 }
 function unmoveTask(key){ delete S.moves[key]; save(); render(); }
 function toggleFree(d){ const i=S.freeDays.indexOf(d); if(i>=0) S.freeDays.splice(i,1); else S.freeDays.push(d); save(); render(); }
-function selectDay(d){ selDay=d; render(); }
+function selectDay(d){ if(dgSuppress) return; selDay=d; render(); }
 function moveMonth(n){ calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+n,1); render(); }
 function toggleSubj(el){ el.open ? openSubj.add(el.dataset.s) : openSubj.delete(el.dataset.s); }
 function setPerDay(v){ S.subjectsPerDay = v; save(); render(); }
@@ -1091,11 +1095,67 @@ function wizardHtml(){
 }
 
 
+/* ---------- Kalender: Tag gedrückt halten und auf einen anderen Tag ziehen = alle Themen verschieben ---------- */
+let dg = null, dgSuppress = false, lastTouchAt = 0;
+function dayAt(x,y){ const el = document.elementFromPoint(x,y), c = el && el.closest && el.closest('.day[data-day]'); return c ? c.dataset.day : null; }
+function dgStart(target,x,y){
+  if(page!=='cal' || dg) return;
+  const cell = target && target.closest && target.closest('.day[data-day]'); if(!cell) return;
+  const day = cell.dataset.day; if(day < todayIso()) return;
+  const n = (computePlan().days[day]||[]).filter(t=>!t.done).length; if(!n) return;
+  dg = { from:day, n, x0:x, y0:y, x, y, active:false, ghost:null, timer:setTimeout(dgActivate, 380) };
+}
+function dgActivate(){
+  if(!dg) return; dg.active = true;
+  try{ navigator.vibrate && navigator.vibrate(15); }catch(e){}
+  const src = document.querySelector(`.day[data-day="${dg.from}"]`); if(src) src.classList.add('dragsrc');
+  const g = document.createElement('div'); g.className = 'dgghost'; g.textContent = `${dg.n} ${dg.n===1?'Thema':'Themen'}`;
+  g.style.left = dg.x+'px'; g.style.top = dg.y+'px'; document.body.appendChild(g); dg.ghost = g;
+}
+function dgMove(x,y,e){
+  if(!dg) return; dg.x = x; dg.y = y;
+  if(!dg.active){ if(Math.hypot(x-dg.x0,y-dg.y0) > 10){ clearTimeout(dg.timer); dg = null; } return; }   // früh bewegt: normales Scrollen/Wischen
+  if(e && e.cancelable) e.preventDefault();                                                                // ab jetzt kein Scrollen mehr
+  dg.ghost.style.left = x+'px'; dg.ghost.style.top = y+'px';
+  document.querySelectorAll('.day.dgover').forEach(c=>c.classList.remove('dgover'));
+  const over = dayAt(x,y); if(over && over!==dg.from && over>=todayIso()){ const c = document.querySelector(`.day[data-day="${over}"]`); if(c) c.classList.add('dgover'); }
+}
+function dgEnd(x,y,cancelled){
+  if(!dg) return; clearTimeout(dg.timer); const d = dg; dg = null;
+  if(!d.active) return;
+  if(d.ghost) d.ghost.remove();
+  document.querySelectorAll('.day.dragsrc,.day.dgover').forEach(c=>c.classList.remove('dragsrc','dgover'));
+  dgSuppress = true; setTimeout(()=>{ dgSuppress = false; }, 80);                                           // der Loslass-Klick soll keinen Tag auswählen
+  const to = cancelled ? null : dayAt(x,y);
+  if(to && to!==d.from) moveDayTo(d.from,to);
+}
+/* Alle offenen Themen eines Tages auf einen anderen Tag legen (eine Rückfrage) */
+function moveDayTo(from,to){
+  const today = todayIso(), tasks = (computePlan().days[from]||[]).filter(t=>!t.done); if(!tasks.length) return;
+  const f = d => fmt(d,{weekday:'long',day:'numeric',month:'long'});
+  if(to < today){ alert('Du kannst nichts in die Vergangenheit verschieben.'); return; }
+  if(S.freeDays.includes(to)){ alert(`${f(to)} ist lernfrei. Hebe das zuerst auf, dann kannst du Themen dorthin legen.`); return; }
+  const movable = tasks.filter(t=>{ const s = subOf(t.subjectId); return s && s.examDate && to < s.examDate; });
+  const stuck = tasks.length - movable.length, n = movable.length;
+  if(!n){ alert('Das geht nicht: An diesem Tag oder davor ist schon die Prüfung.'); return; }
+  if(!confirm(`${n} ${n===1?'Thema':'Themen'} von ${f(from)} auf ${f(to)} verschieben?${stuck?`\n\n${stuck} ${stuck===1?'Thema bleibt':'Themen bleiben'}, weil dann die Prüfung schon vorbei wäre.`:''}\n\nDer restliche Plan passt sich an.`)) return;
+  for(const t of movable){ const prev = S.moves[t.key]; S.moves[t.key] = { to, from:[...(prev?prev.from:[]), from].filter(x=>x!==to) }; }
+  save(); selDay = to; render();
+}
+document.addEventListener('touchstart', e=>{ lastTouchAt = Date.now(); const t = e.touches[0]; if(e.touches.length===1) dgStart(e.target,t.clientX,t.clientY); else if(dg){ clearTimeout(dg.timer); dg = null; } }, {passive:true});
+document.addEventListener('touchmove', e=>{ const t = e.touches[0]; if(t) dgMove(t.clientX,t.clientY,e); }, {passive:false});
+document.addEventListener('touchend', e=>{ const t = e.changedTouches[0]; dgEnd(t?t.clientX:0, t?t.clientY:0, false); });
+document.addEventListener('touchcancel', ()=>dgEnd(0,0,true));
+document.addEventListener('mousedown', e=>{ if(e.button===0 && Date.now()-lastTouchAt>800) dgStart(e.target,e.clientX,e.clientY); });
+document.addEventListener('mousemove', e=>dgMove(e.clientX,e.clientY,e));
+document.addEventListener('mouseup', e=>{ if(Date.now()-lastTouchAt>800) dgEnd(e.clientX,e.clientY,false); });
+document.addEventListener('contextmenu', e=>{ if(dg && dg.active) e.preventDefault(); });
+
 /* Wischen im Kalender: links = nächster Monat, rechts = voriger Monat */
 let swipe = null;
 app.addEventListener('touchstart',e=>{ swipe = (page==='cal' && e.touches.length===1) ? {x:e.touches[0].clientX,y:e.touches[0].clientY} : null; },{passive:true});
 app.addEventListener('touchend',e=>{
-  if(!swipe || page!=='cal') return;
+  if(!swipe || page!=='cal' || (dg && dg.active)) return;
   const t = e.changedTouches[0], dx = t.clientX-swipe.x, dy = t.clientY-swipe.y; swipe = null;
   if(Math.abs(dx)>50 && Math.abs(dx)>Math.abs(dy)*1.5) moveMonth(dx<0 ? 1 : -1);
 },{passive:true});
