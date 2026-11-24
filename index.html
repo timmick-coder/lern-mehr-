@@ -282,7 +282,17 @@ function computePlan(){
     const bigs = pending.filter(s=>s.big && !S.done[s.key] && !(S.moves[s.key] && avail.includes(S.moves[s.key].to)));
     const m = Math.min(bigs.length, Math.max(0, avail.length-1)), resv = {};
     bigs.slice(bigs.length-m).forEach((s,i)=>{ resv[s.key] = avail[avail.length-m+i]; });
-    plans.push({ sub, pending, avail, reg:avail.slice(0, avail.length-m), resv, k:RAMP[sub.ramp] ?? 0 });
+    const reg = avail.slice(0, avail.length-m);
+    // Lernfreie Tage mitten im Plan: Die ausfallenden Themen werden nicht einfach hinten angehängt, sondern etwa je zur
+    // Hälfte auf den Lerntag davor und den Lerntag danach verteilt. extra = so viele Themen darf der Tag zusätzlich aufnehmen.
+    const extra = {}, perSide = Math.max(1, Math.round(pending.filter(s=>!resv[s.key]).length / Math.max(1,reg.length) / 2));
+    for(const F of S.freeDays){
+      if(!reg.length || F<=reg[0] || F>=reg[reg.length-1]) continue;
+      const after = reg.findIndex(d=>d>F); if(after<1) continue;
+      extra[reg[after-1]] = (extra[reg[after-1]]||0) + perSide;
+      extra[reg[after]] = (extra[reg[after]]||0) + perSide;
+    }
+    plans.push({ sub, pending, avail, reg, resv, extra, k:RAMP[sub.ramp] ?? 0 });
   }
   const dayList = [...new Set(plans.flatMap(p=>p.avail))].sort();
 
@@ -329,10 +339,11 @@ function computePlan(){
       if(last) target = rest[id];                           // am letzten Lerntag muss alles Übrige untergebracht werden
       const lighter = last ? 0 : (away[id][d] || 0);
       if(lighter){ target -= lighter; if(target<=0) continue; }
+      let slots = p.extra[d] || 0;                          // Tage neben einem lernfreien Tag nehmen noch ein paar Themen zusätzlich
       while(q[id].length){
         const s = q[id][0];
         // Passt das Thema noch in den Tagesaufwand? Mindestens sein halber Aufwand muss frei sein.
-        if(used + s.w/2 > target) break;
+        if(used + s.w/2 > target){ if(slots>0) slots--; else break; }
         (out[d] ||= []).push({...s,done:!!S.done[s.key]}); used += s.w; rest[id] -= s.w; q[id].shift();
       }
     }
