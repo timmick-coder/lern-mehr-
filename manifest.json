@@ -1,13 +1,15 @@
 {
-  "name": "Lern Mehr – Dein Lernplan",
-  "short_name": "Lern Mehr",
-  "description": "Lernplan bis zur Prüfung, der sich an deine Präferenzen anpasst",
+  "name": "Lern Bär – Dein Lernplan",
+  "short_name": "Lern Bär",
+  "description": "Dein Lernplan bis zur Prüfung, mit einem Bär, der dich begleitet",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f5f6fa",
-  "theme_color": "#4f6df5",
+  "background_color": "#F7E3C4",
+  "theme_color": "#BE7C4A",
   "orientation": "portrait-primary",
   "icons": [
-    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]
 }

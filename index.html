@@ -3,47 +3,69 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lern Mehr</title>
+<title>Lern Bär</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icon.svg">
-<meta name="theme-color" content="#4f6df5">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#BE7C4A">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Lern Mehr">
+<meta name="apple-mobile-web-app-title" content="Lern Bär">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat+Brush&family=Patrick+Hand&display=swap">
 <style>
 :root{
-  --bg:#f5f6fa; --card:#fff; --text:#1d2433; --muted:#6b7385; --line:#e3e6ee;
-  --accent:#4f6df5; --accent-text:#fff; --ok:#1f9d63; --warn:#d9822b; --danger:#d64545; --free:#e9ebf2;
-  --radius:14px;
+  /* Bilderbuch-Look: Aquarell-Himmel, Wiese, Honiggold, Tusche */
+  --bg:#F1E4C4; --card:#FBF3DE; --text:#3A2816; --muted:#7A6548; --line:rgba(90,62,30,.3);
+  --accent:#E39A1F; --accent-text:#35200E; --ok:#5F9A4A; --warn:#C9761F; --danger:#B8453A; --free:#DDE3B8;
+  --radius:18px; --ink:#4A3420;
+  --sky:linear-gradient(180deg,#9CC8DC 0%,#CFE4E6 55%,#EAF0DC 75%);
+  --head:"Caveat Brush","Segoe Print","Bradley Hand",Georgia,serif;
+  --ui:"Patrick Hand","Segoe Print","Comic Sans MS",system-ui,sans-serif;
 }
 @media (prefers-color-scheme: dark){
-  :root{ --bg:#12151d; --card:#1b1f2b; --text:#e8ebf3; --muted:#9097a8; --line:#2b3040;
-    --accent:#7088ff; --accent-text:#0b0e17; --ok:#3ac183; --warn:#e8a050; --danger:#ef6b6b; --free:#252a39; }
+  :root{ --bg:#262634; --card:#2F2D3B; --text:#F3E9D2; --muted:#B2A58E; --line:rgba(255,226,170,.2);
+    --accent:#F0B94A; --accent-text:#2A1A0C; --ok:#8CC36A; --warn:#E8A050; --danger:#EC7A72; --free:#34412F; --ink:#F3E9D2;
+    --sky:linear-gradient(180deg,#1B2747 0%,#27405A 55%,#33503F 100%); }
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-bottom:80px}
-main{max-width:860px;margin:0 auto;padding:20px 16px}
-h1{font-size:1.5rem;margin:0 0 4px} h2{font-size:1.1rem;margin:0 0 12px}
+html{background:#DDEEF3}
+body{margin:0;color:var(--text);font:17.5px/1.4 var(--ui);padding-bottom:96px;min-height:100vh;background:#CFE4E6}
+@media (prefers-color-scheme: dark){html{background:#1B2747}body{background:#1B2747}}
+.scene{position:fixed;inset:0;z-index:0;pointer-events:none}
+.scene{background:#CFE4E6 url(hintergrund.webp) center top/cover no-repeat}
+@media (prefers-color-scheme: dark){.scene{filter:brightness(.42) saturate(.8) hue-rotate(8deg)}}
+main{max-width:860px;margin:0 auto;padding:20px 16px;position:relative;z-index:1}
+h1,h2{font-family:var(--head);color:var(--text);font-weight:400;letter-spacing:.01em}
+h1{font-size:2.1rem;line-height:1.1;margin:0 0 4px} h2{font-size:1.55rem;line-height:1.15;margin:0 0 12px}
+button,input,select,textarea{font-family:var(--ui)}
 .muted{color:var(--muted)} .small{font-size:.85rem}
-nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:center;gap:4px;padding:8px;z-index:10}
-nav button{flex:1;max-width:200px;border:0;background:none;color:var(--muted);padding:10px 8px;border-radius:10px;font:inherit;font-weight:600;cursor:pointer}
-nav button.active{background:var(--accent);color:var(--accent-text)}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+nav{position:fixed;bottom:0;left:0;right:0;background:#7DB352;border-top:2px solid #3F6B2A;display:flex;justify-content:center;gap:6px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));z-index:10}
+nav::before{content:'';position:absolute;left:0;right:0;top:-20px;height:20px;pointer-events:none;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 20' preserveAspectRatio='none'%3E%3Cpath d='M0 20 V12 Q15 2 30 11 T60 10 Q75 0 90 10 T120 11 Q135 3 150 10 T180 12 Q195 1 210 10 T240 11 Q255 2 270 10 T300 10 Q315 1 330 11 T360 10 Q380 5 400 12 V20Z' fill='%237DB352' stroke='%233F6B2A' stroke-width='1.5'/%3E%3C/svg%3E") 0 100%/400px 20px repeat-x}
+nav button{flex:1;max-width:200px;border:2px solid transparent;background:none;color:#1F3A12;padding:9px 8px;border-radius:14px;font:inherit;font-weight:700;cursor:pointer}
+nav button.active{background:#F6CF5E;color:#3B2418;border-color:#4A3420;box-shadow:0 2px 0 rgba(74,52,32,.35)}
+@media (prefers-color-scheme: dark){nav{background:#3C5E2E;border-top-color:#22381A}nav::before{filter:brightness(.55)}nav button{color:#E8F0D4}}
+body::after{content:'';position:fixed;top:56px;right:8%;width:34px;height:28px;pointer-events:none;z-index:0;opacity:.9;animation:beefly 7s ease-in-out infinite;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 28'%3E%3Cellipse cx='11' cy='7' rx='7' ry='5' fill='%23fff' fill-opacity='.85' stroke='%234A3420' stroke-width='1'/%3E%3Cellipse cx='22' cy='6' rx='7' ry='5' fill='%23fff' fill-opacity='.85' stroke='%234A3420' stroke-width='1'/%3E%3Cellipse cx='17' cy='17' rx='9' ry='7' fill='%23F2B72E' stroke='%234A3420' stroke-width='1.3'/%3E%3Cpath d='M14 11 V23 M19 11 V23' stroke='%234A3420' stroke-width='2.2'/%3E%3Ccircle cx='24' cy='15' r='1.2' fill='%234A3420'/%3E%3C/svg%3E") center/contain no-repeat}
+@keyframes beefly{0%,100%{transform:translate(0,0) rotate(-4deg)}25%{transform:translate(-26px,10px) rotate(3deg)}50%{transform:translate(-8px,22px) rotate(-3deg)}75%{transform:translate(18px,8px) rotate(4deg)}}
+@media (prefers-reduced-motion:reduce){body::after{animation:none}}
+.card{background:var(--card);border:1.5px solid var(--ink);border-radius:20px 17px 21px 16px;padding:16px;margin-bottom:16px;box-shadow:0 3px 0 rgba(74,52,32,.18),0 8px 18px rgba(80,110,130,.14)}
 .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
 label.f{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:.9rem}
-input,textarea,select{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 10px;width:100%}
+input,textarea,select{font:inherit;color:var(--text);background:var(--bg);border:1.5px solid var(--line);border-radius:12px;padding:9px 10px;width:100%}
 textarea{min-height:130px;resize:vertical}
-button.btn{font:inherit;font-weight:600;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:10px;padding:9px 14px;cursor:pointer}
-button.btn.primary{background:var(--accent);color:var(--accent-text);border-color:var(--accent)}
+button.btn{font:inherit;font-weight:600;border:1.5px solid var(--ink);background:var(--card);color:var(--text);border-radius:12px;padding:9px 14px;cursor:pointer;box-shadow:0 2px 0 rgba(74,52,32,.25)}
+button.btn:active{transform:translateY(1px);box-shadow:none}
+button.btn.primary{background:var(--accent);color:var(--accent-text);border-color:var(--ink)}
 button.btn.danger{color:var(--danger)}
-.bar{height:10px;background:var(--free);border-radius:99px;overflow:hidden}
-.bar>div{height:100%;background:var(--ok);transition:width .3s}
+.bar{height:12px;background:var(--free);border:1.5px solid var(--ink);border-radius:99px;overflow:hidden}
+.bar>div{height:100%;background:linear-gradient(90deg,#F2C14E,#E8AE2E);transition:width .3s}
 .stats{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
 .stat{flex:1;min-width:110px;background:var(--bg);border-radius:12px;padding:10px 12px}
 .stat b{display:block;font-size:1.3rem}
-.task{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;border-left:6px solid var(--c,var(--accent))}
+.task{display:flex;align-items:center;gap:12px;padding:12px;border:1.5px solid var(--line);background:color-mix(in srgb,var(--card) 70%,var(--bg));border-radius:14px;margin-bottom:8px;border-left:6px solid var(--c,var(--accent))}
 .task .tl{display:flex;align-items:center;gap:12px;flex:1;min-width:0;cursor:pointer}
 .task input[type=checkbox]{width:22px;height:22px;flex:none;accent-color:var(--ok)}
 .task .t{flex:1;min-width:0}
@@ -99,8 +121,8 @@ button.btn.danger{color:var(--danger)}
 .task .mv{flex:none;padding:6px 10px;font-size:.8rem;white-space:nowrap}
 .task button.tag{border:0;cursor:pointer;font:inherit;font-size:.75rem}
 .mvs{display:flex;gap:6px;flex:none}
-.modal-bg{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
-.modal{background:var(--card);color:var(--text);border-radius:16px;padding:16px;width:100%;max-width:380px;max-height:92vh;overflow:auto}
+.modal-bg{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(59,42,26,.45);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:var(--card);color:var(--text);border:1.5px solid var(--ink);box-shadow:0 4px 0 rgba(74,52,32,.25);border-radius:20px;padding:16px;width:100%;max-width:380px;max-height:92vh;overflow:auto}
 .pcal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:8px 0}
 .pcal .dow{text-align:center;font-size:.7rem;color:var(--muted);font-weight:600}
 .exrow{margin-bottom:8px;cursor:pointer;padding:10px 12px;border-radius:10px;border-left:6px solid var(--c,var(--accent));background:color-mix(in srgb,var(--c,var(--accent)) 16%,transparent)}
@@ -130,6 +152,25 @@ button.btn.danger{color:var(--danger)}
 .day.dragsrc{opacity:.5;outline:2px dashed var(--accent)}
 .day.dgover{outline:3px solid var(--accent);background:color-mix(in srgb,var(--accent) 18%,var(--bg))}
 .dgghost{position:fixed;z-index:120;pointer-events:none;background:var(--accent);color:var(--accent-text);padding:6px 12px;border-radius:999px;font-size:.85rem;font-weight:600;transform:translate(-50%,-150%)}
+.bearcard{display:flex;align-items:center;gap:6px;margin:0 0 14px}
+.bearwrap{flex:none;border-radius:20px;padding:4px 2px 0;border:1px solid rgba(60,40,20,.1);
+  background:radial-gradient(circle at 18% 84%,rgba(242,174,46,.32) 0 13%,transparent 14%),radial-gradient(circle at 88% 22%,rgba(110,152,166,.28) 0 7%,transparent 8%),radial-gradient(circle at 80% 88%,rgba(242,174,46,.22) 0 5%,transparent 6%),#F8F0E2;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;animation:bearbob 3.4s ease-in-out infinite;transform-origin:50% 90%}
+.bearwrap.hop{animation:bearhop .5s ease-out}
+.bearsvg,.bear3dcanvas{display:block;max-width:34vw;height:auto;width:150px}
+.bear3dcanvas{width:170px;max-width:38vw;aspect-ratio:170/200}
+.beareye{transform-box:fill-box;transform-origin:center;animation:bearblink 5s infinite}
+.spark{animation:bearspark 1.8s ease-in-out infinite;transform-box:fill-box;transform-origin:center}.spark.s2{animation-delay:.7s}
+.zzz{animation:bearzzz 2.4s ease-in-out infinite}.zzz.z2{animation-delay:.9s}
+.bubble{position:relative;flex:1;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px 14px}
+.bubble::before{content:'';position:absolute;left:-8px;top:50%;margin-top:-8px;border:8px solid transparent;border-left:0;border-right-color:var(--line)}
+.bubble::after{content:'';position:absolute;left:-6.5px;top:50%;margin-top:-7px;border:7px solid transparent;border-left:0;border-right-color:var(--card)}
+@keyframes bearbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes bearhop{0%{transform:translateY(0) scale(1)}35%{transform:translateY(-16px) scale(1.04,.96)}70%{transform:translateY(0) scale(.97,1.03)}100%{transform:translateY(0) scale(1)}}
+@keyframes bearblink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+@keyframes bearspark{0%,100%{transform:scale(.7);opacity:.6}50%{transform:scale(1.15);opacity:1}}
+@keyframes bearzzz{0%{transform:translateY(6px);opacity:0}30%{opacity:1}100%{transform:translateY(-8px);opacity:0}}
+@media (prefers-reduced-motion:reduce){.bearwrap,.bearwrap.hop,.beareye,.spark,.zzz{animation:none}}
 .datebtn{width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:500}
 .dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:8px;vertical-align:-1px}
 .sw{display:flex;gap:8px;flex-wrap:wrap;padding-top:4px}
@@ -144,9 +185,52 @@ button.btn.danger{color:var(--danger)}
 .folder>summary{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 10px;padding:12px 0;cursor:pointer;list-style:none;font-weight:600}
 .folder>summary::-webkit-details-marker{display:none}
 .folder[open]>summary{border-bottom:1px solid var(--line);margin-bottom:10px}
+/* Feinschliff: hochwertiger, ruhiger, mit Tiefe */
+.card{border:1px solid rgba(74,52,32,.32);border-radius:22px;padding:18px;
+  background:linear-gradient(180deg,rgba(255,252,242,.97),rgba(250,241,220,.97));
+  box-shadow:0 1px 0 rgba(255,255,255,.8) inset,0 1px 2px rgba(60,40,20,.18),0 10px 28px -8px rgba(50,70,60,.35)}
+@media (prefers-color-scheme: dark){.card{background:linear-gradient(180deg,rgba(52,49,66,.95),rgba(42,40,56,.95));border-color:rgba(255,226,170,.22);box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 10px 28px -8px rgba(0,0,0,.6)}}
+.modal{border:1px solid rgba(74,52,32,.32);border-radius:24px;box-shadow:0 20px 50px -10px rgba(30,25,15,.55)}
+button.btn{border:1px solid rgba(74,52,32,.4);border-radius:14px;padding:9px 15px;box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 2px 4px rgba(60,40,20,.15);transition:transform .12s,box-shadow .12s}
+button.btn.primary{background:linear-gradient(180deg,#F2B544,#DE9318);border-color:rgba(110,66,10,.7);box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 3px 8px -2px rgba(190,120,20,.55)}
+button.btn:active{transform:translateY(1px) scale(.99)}
+input,textarea,select{border:1px solid rgba(74,52,32,.28);box-shadow:0 1px 2px rgba(60,40,20,.08) inset}
+input:focus,textarea:focus,select:focus{outline:2px solid rgba(227,154,31,.55);outline-offset:1px}
+.stat{background:rgba(120,90,40,.08);border:1px solid rgba(74,52,32,.12);border-radius:16px}
+.stat b{font-family:var(--head);font-weight:400;font-size:1.7rem;line-height:1.1}
+.task{border:1px solid rgba(74,52,32,.18);border-left:5px solid var(--c,var(--accent));border-radius:16px;background:rgba(255,255,255,.55);box-shadow:0 1px 3px rgba(60,40,20,.08)}
+.bar{border:1px solid rgba(74,52,32,.3);height:11px;box-shadow:0 1px 2px rgba(60,40,20,.15) inset}
+.day{border-radius:12px;border-color:rgba(74,52,32,.15);background:rgba(255,255,255,.5)}
+.bubble{border-radius:20px;box-shadow:0 4px 12px -4px rgba(60,40,20,.3)}
+.bearwrap{box-shadow:0 6px 16px -6px rgba(60,40,20,.4)}
+nav{left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));padding:6px;gap:4px;border:1px solid rgba(74,52,32,.3);border-radius:26px;
+  background:rgba(251,244,226,.82);-webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);
+  box-shadow:0 10px 30px -8px rgba(40,50,40,.5),0 1px 0 rgba(255,255,255,.7) inset;max-width:520px;margin:0 auto}
+nav::before{display:none}
+nav button{color:var(--muted);border:1px solid transparent;border-radius:20px;padding:9px 6px}
+nav button.active{background:linear-gradient(180deg,#F5C257,#E39A1F);color:#35200E;border-color:rgba(110,66,10,.55);box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 3px 8px -2px rgba(190,120,20,.5)}
+@media (prefers-color-scheme: dark){nav{background:rgba(40,38,54,.8);border-color:rgba(255,226,170,.22)}nav button{color:#CFC3AB}}
+body{padding-bottom:104px}
+.bearwrap{position:relative;padding:4px 2px 0;background:linear-gradient(180deg,#FCF6E6,#F6EAD0)}
+.bearimg{display:block;width:118px;max-width:30vw;height:auto;-webkit-user-select:none;user-select:none}
+.bear3d{transform-origin:50% 88%;will-change:transform;mix-blend-mode:multiply}
+.bearshadow{position:absolute;left:50%;bottom:4px;width:84px;height:12px;margin-left:-42px;border-radius:50%;background:radial-gradient(ellipse at center,rgba(60,40,20,.38),rgba(60,40,20,0) 70%)}
+.bearimg.fx-okay{filter:saturate(.88)}
+.bearimg.fx-besorgt{filter:saturate(.7) brightness(.97)}
+.bearimg.fx-traurig{filter:grayscale(.7) brightness(.93)}
+.bearimg.fx-schlaf{filter:saturate(.75) brightness(.9)}
+.bearwrap.fb::after{position:absolute;top:8px;right:8px;font-family:var(--head);font-size:1.5rem;line-height:1;color:#6B7FD7}
+.bearwrap.fb[data-mood=schlaf]::after{content:'Zzz'}
+.bearwrap.fb[data-mood=stolz]::after{content:'★';color:#E8AE2E;font-size:1.8rem}
+.bearwrap.fb[data-mood=besorgt]::after,.bearwrap.fb[data-mood=traurig]::after{content:'💧';font-size:1.2rem}
+.bearwrap.fb[data-mood=pruefung]::after{content:'!';color:#C9504A;font-size:2rem}
+main>h1,main>.muted,main>p.muted,main>div:first-child>.muted,main>div:first-child>h1{text-shadow:0 0 8px rgba(255,251,238,.95),0 0 3px rgba(255,251,238,.95)}
+@media (prefers-color-scheme: dark){main>h1,main>.muted,main>p.muted,main>div:first-child>.muted,main>div:first-child>h1{text-shadow:0 1px 6px rgba(0,0,0,.7)}}
+@media (prefers-color-scheme: dark){.task,.day{background:rgba(255,255,255,.06)}.stat{background:rgba(255,255,255,.06);border-color:rgba(255,226,170,.12)}.tag{background:rgba(255,255,255,.1)}}
 </style>
 </head>
 <body>
+<div class="scene" aria-hidden="true"></div>
 <main id="app"></main>
 <div id="modal"></div>
 <nav>
@@ -158,7 +242,7 @@ button.btn.danger{color:var(--danger)}
 <script>
 /* ---------- Zustand ---------- */
 const KEY = 'lernmehr-v1';
-const fresh = () => ({ subjects:[], topics:[], freeDays:[], done:{}, moves:{}, dayLimit:0, subjectsPerDay:2, unit:'tasks' });
+const fresh = () => ({ subjects:[], topics:[], freeDays:[], done:{}, moves:{}, firstPlanned:{}, dayLimit:0, subjectsPerDay:2, unit:'tasks' });
 /* Gespeicherte Daten laden: „unit“ bewusst nicht vorbelegen, damit alte Zeit-Daten umgerechnet werden */
 const withDefaults = d => { const b = fresh(); delete b.unit; return Object.assign(b, d); };
 /* Deutlich unterscheidbare Fachfarben (funktionieren in hell und dunkel) */
@@ -179,7 +263,7 @@ function getSubject(name){
 }
 /* Alte Daten (ein Prüfungsdatum für alles, Fach als Vorsatz im Themennamen) in Fächer umwandeln */
 function migrate(s){
-  s.subjects ||= []; s.topics ||= []; s.freeDays ||= []; s.done ||= {}; s.moves ||= {}; s.dayLimit = +s.dayLimit || 0;
+  s.subjects ||= []; s.topics ||= []; s.freeDays ||= []; s.done ||= {}; s.moves ||= {}; s.firstPlanned ||= {}; s.dayLimit = +s.dayLimit || 0;
   if(s.subjectsPerDay === undefined) s.subjectsPerDay = 2;
   const legacy = s.topics.some(t=>!t.subjectId);
   if(legacy){
@@ -210,7 +294,17 @@ function load(){
     return fresh();
   }
 }
-function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+/* S.firstPlanned merkt sich pro Thema, für welchen Tag es zuerst eingeplant war – daraus erkennt der Bär einen Rückstand.
+   Ändert sich der Plan (Einstellungen, lernfreie Tage …), beginnt das Merken neu; Abhaken, Verschieben und Neu planen behalten es (keepLate). */
+function save(keepLate){
+  if(keepLate!==true) S.firstPlanned = {};
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){}
+}
+function notePlanned(plan){
+  const fp = S.firstPlanned ||= {}; let changed = false;
+  for(const [d,ts] of Object.entries(plan.days)) for(const t of ts){ if(!t.done && !fp[t.key]){ fp[t.key] = d; changed = true; } }
+  if(changed){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+}
 
 /* ---------- Datum-Helfer ---------- */
 const pad = n => String(n).padStart(2,'0');
@@ -374,12 +468,16 @@ function computePlan(){
 /* ---------- Rendering ---------- */
 const app = document.getElementById('app');
 
+let lastPage = null;
 function render(){
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.p===page));
-  const plan = computePlan();
+  const plan = computePlan(), keepY = window.scrollY, samePage = lastPage===page;
+  notePlanned(plan);
   app.innerHTML = page==='today' ? viewToday(plan) : page==='cal' ? viewCal(plan) : viewSettings();
   renderModal();
-  window.scrollTo(0,0 + (page==='cal'?window.scrollY:0));
+  window.scrollTo(0, samePage ? keepY : 0);          // gleiche Seite neu zeichnen: Position behalten, beim Seitenwechsel nach oben
+  lastPage = page;
+  if(page==='today') mount3dBear();                  // flachen Bär durch den 3D-Bär ersetzen (falls WebGL da ist)
   if(celebrate){ const k = celebrate; celebrate = null; requestAnimationFrame(()=>cheer(k)); }
 }
 
@@ -416,7 +514,7 @@ function subProgress(sub){
 }
 
 function viewToday(plan){
-  if(!ready()) return `<h1>Heute</h1>${setupHint()}`;
+  if(!ready()) return `<h1>Heute</h1>${bearCardHtml(plan)}${setupHint()}`;
   const today = todayIso(), {info} = plan;
   const tasks = plan.days[today] || [];
   const isFree = S.freeDays.includes(today);
@@ -435,7 +533,8 @@ function viewToday(plan){
       <div class="stat"><b>${pctToday}%</b><span class="small muted">heute geschafft</span></div>
       <div class="stat"><b>${nDone} / ${tasks.length}</b><span class="small muted">Themen erledigt</span></div></div>
       <div class="bar"><div style="width:${pctToday}%"></div></div></div>`;
-  return `<h1>Heute</h1><p class="muted">${fmt(today,{weekday:'long',day:'numeric',month:'long'})}</p>
+  return `<h1>Heute</h1><p class="muted" style="margin-top:0">${fmt(today,{weekday:'long',day:'numeric',month:'long'})}</p>
+    ${bearCardHtml(plan)}
     ${exToday.length?`<div class="notice ok">Heute Prüfung: <b>${exToday.map(esc).join(', ')}</b> – viel Erfolg! 🍀</div>`:''}
     ${stats}
     ${tasks.length && nDone===tasks.length ? '<div class="notice ok" style="text-align:center"><b>Alles für heute geschafft! 🎉</b><br><span class="small">Richtig stark – gönn dir eine Pause.</span></div>' : ''}
@@ -596,14 +695,14 @@ function replan(){
   // Nur Verschiebungen, die gar nicht mehr möglich sind (Tag vorbei, Thema gelöscht), werden aufgeräumt – alle anderen bleiben, wo du sie hingelegt hast
   const today = todayIso(), keys = new Set(allSessions().map(s=>s.key));
   for(const [k,m] of Object.entries(S.moves)) if(!keys.has(k) || S.done[k] || m.to<today) delete S.moves[k];
-  save(); render();
+  save(true); render();
   const done = allSessions().filter(s=>S.done[s.key]).length, moved = Object.keys(S.moves).length;
   toast(`Plan neu berechnet · ${done} erledigt${done===1?'es Thema bleibt':'e Themen bleiben'} abgehakt${moved?`, ${moved} verschoben${moved===1?'es bleibt':'e bleiben'} an ihrem Tag`:''}`);
 }
 /* Abhaken: die Aufgabe bleibt an dem Tag stehen, an dem sie geplant war (auch im Voraus erledigt) */
 function toggleDone(key,day){
-  if(S.done[key]) delete S.done[key]; else { S.done[key]=day||todayIso(); delete S.moves[key]; celebrate = key; }
-  save(); render();
+  if(S.done[key]) delete S.done[key]; else { S.done[key]=day||todayIso(); delete S.moves[key]; celebrate = key; if(S.firstPlanned) delete S.firstPlanned[key]; }
+  save(true); render();
 }
 
 /* ---------- Belohnungs-GIFs (mehrere möglich, beim Abhaken erscheint zufällig eins; getrennt vom Plan gespeichert) ---------- */
@@ -862,9 +961,9 @@ function moveTaskTo(key,from,to,ask=true){
   const f = d => fmt(d,{weekday:'long',day:'numeric',month:'long'});
   if(ask && !confirm(`„${s.name}“ (${sub.name}) von ${f(from)} auf ${f(to)} verschieben?\n\nDer restliche Plan passt sich an.`)) return render();
   const prev = S.moves[key];
-  S.moves[key] = { to, from:[...(prev?prev.from:[]), from].filter(x=>x!==to) }; save(); render();
+  S.moves[key] = { to, from:[...(prev?prev.from:[]), from].filter(x=>x!==to) }; S.firstPlanned[key] = to; save(true); render();
 }
-function unmoveTask(key){ delete S.moves[key]; save(); render(); }
+function unmoveTask(key){ delete S.moves[key]; delete S.firstPlanned[key]; save(true); render(); }
 function toggleFree(d){ const i=S.freeDays.indexOf(d); if(i>=0) S.freeDays.splice(i,1); else S.freeDays.push(d); save(); render(); }
 function selectDay(d){ if(dgSuppress) return; selDay=d; render(); }
 function moveMonth(n){ calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+n,1); render(); }
@@ -1150,8 +1249,8 @@ function moveDayTo(from,to){
   const stuck = tasks.length - movable.length, n = movable.length;
   if(!n){ alert('Das geht nicht: An diesem Tag oder davor ist schon die Prüfung.'); return; }
   if(!confirm(`${n} ${n===1?'Thema':'Themen'} von ${f(from)} auf ${f(to)} verschieben?${stuck?`\n\n${stuck} ${stuck===1?'Thema bleibt':'Themen bleiben'}, weil dann die Prüfung schon vorbei wäre.`:''}\n\nDer restliche Plan passt sich an.`)) return;
-  for(const t of movable){ const prev = S.moves[t.key]; S.moves[t.key] = { to, from:[...(prev?prev.from:[]), from].filter(x=>x!==to) }; }
-  save(); selDay = to; render();
+  for(const t of movable){ const prev = S.moves[t.key]; S.moves[t.key] = { to, from:[...(prev?prev.from:[]), from].filter(x=>x!==to) }; S.firstPlanned[t.key] = to; }
+  save(true); selDay = to; render();
 }
 document.addEventListener('touchstart', e=>{ lastTouchAt = Date.now(); const t = e.touches[0]; if(e.touches.length===1) dgStart(e.target,t.clientX,t.clientY); else if(dg){ clearTimeout(dg.timer); dg = null; } }, {passive:true});
 document.addEventListener('touchmove', e=>{ const t = e.touches[0]; if(t) dgMove(t.clientX,t.clientY,e); }, {passive:false});
@@ -1161,6 +1260,307 @@ document.addEventListener('mousedown', e=>{ if(e.button===0 && Date.now()-lastTo
 document.addEventListener('mousemove', e=>dgMove(e.clientX,e.clientY,e));
 document.addEventListener('mouseup', e=>{ if(Date.now()-lastTouchAt>800) dgEnd(e.clientX,e.clientY,false); });
 document.addEventListener('contextmenu', e=>{ if(dg && dg.active) e.preventDefault(); });
+
+/* ---------- Lern Bär: zeigt, wie gut du im Plan bist ---------- */
+const BEAR_LINES = {
+  start:['Hallo! Ich bin dein Lern Bär. Leg ein Fach an, dann lerne ich mit dir.','Bereit, wenn du es bist!'],
+  stolz:['Wow, du bist voll im Plan! Ich bin so stolz auf dich.','Läuft bei dir! Weiter so.','Du bist heute richtig gut. Gönn dir was Schönes!'],
+  froh:['Alles im grünen Bereich. Packen wir es an!','Heute schaffen wir das zusammen.','Ich freue mich aufs Lernen mit dir!'],
+  okay:['Ein bisschen Rückstand, das holst du locker auf.','Kleiner Rückstand, kein Problem. Fang mit dem ersten Thema an.'],
+  besorgt:['Hm, da hat sich etwas angesammelt. Ein Thema nach dem anderen, ja?','Ich mache mir ein bisschen Sorgen. Fang einfach mit einem Thema an.'],
+  traurig:['Ich vermisse unsere Lernzeit … Lass uns zusammen aufholen.','Es ist viel liegen geblieben, aber wir schaffen das. Fang ganz klein an.'],
+  schlaf:['Heute ist lernfrei. Ich mache ein Nickerchen.','Zzz … Erhol dich gut!'],
+  pruefung:['Heute ist Prüfung! Du hast so viel gelernt, du schaffst das.','Ich drücke dir die Tatze!']
+};
+const BEAR_LOOK = {
+  stolz:   {fur:'#BE7C4A', face:'happy',  mouth:'smile', cheeks:true, cap:true, sparkle:true},
+  froh:    {fur:'#BE7C4A', face:'open',   mouth:'smile', cheeks:true},
+  okay:    {fur:'#B58058', face:'open',   mouth:'flat'},
+  besorgt: {fur:'#A9836C', face:'open',   mouth:'wavy',  brows:'worried', sweat:true},
+  traurig: {fur:'#98857A', face:'open',   mouth:'frown', brows:'sad', tear:true, bags:true, messy:true},
+  schlaf:  {fur:'#B58058', face:'closed', mouth:'smile', zzz:true},
+  pruefung:{fur:'#BE7C4A', face:'open',   mouth:'smile', cheeks:true, band:true},
+  start:   {fur:'#BE7C4A', face:'open',   mouth:'smile', cheeks:true}
+};
+let bearIdx = 0;
+
+function learnMood(plan){
+  const today = todayIso(), fp = S.firstPlanned || {};
+  if(!ready()) return {m:'start', backlog:0, open:0, total:0};
+  const tasks = plan.days[today] || [], open = tasks.filter(t=>!t.done).length, total = tasks.length;
+  let backlog = 0, pending = 0;
+  for(const s of allSessions()){ if(S.done[s.key]) continue; pending++; const f = fp[s.key]; if(f && f<today) backlog++; }
+  const ahead = Object.values(S.done).filter(d=>d>today).length;
+  const base = {backlog, open, total, ahead, pending};
+  if(examsOn(today).length) return {m:'pruefung', ...base};
+  if(S.freeDays.includes(today)) return {m:'schlaf', ...base};
+  if(backlog>5) return {m:'traurig', ...base};
+  if(backlog>=3) return {m:'besorgt', ...base};
+  if(backlog>=1) return {m:'okay', ...base};
+  if((total>0 && open===0) || ahead>0 || pending===0) return {m:'stolz', ...base};
+  return {m:'froh', ...base};
+}
+
+function bearSvg(m){
+  const L = BEAR_LOOK[m] || BEAR_LOOK.froh, fur = L.fur, dark = '#3B2418', muzzle = '#F2D6B3';
+  const eyeAt = (x,y) => L.face==='happy'
+      ? `<path d="M${x-9} ${y+3} Q${x} ${y-9} ${x+9} ${y+3}" fill="none" stroke="${dark}" stroke-width="4" stroke-linecap="round"/>`
+    : L.face==='closed'
+      ? `<path d="M${x-9} ${y-2} Q${x} ${y+8} ${x+9} ${y-2}" fill="none" stroke="${dark}" stroke-width="4" stroke-linecap="round"/>`
+      : `<g class="beareye"><circle cx="${x}" cy="${y}" r="7" fill="${dark}"/><circle cx="${x+2.5}" cy="${y-2.5}" r="2.4" fill="#fff"/></g>`;
+  const mouths = { smile:'M82 128 Q100 148 118 128', flat:'M88 133 L112 133', wavy:'M84 136 Q92 127 100 136 Q108 145 116 136', frown:'M84 140 Q100 124 116 140' };
+  let s = `<svg class="bearsvg" viewBox="0 0 200 226" width="150" height="170" role="img" aria-label="Lern Bär, Stimmung: ${m}">`;
+  s += `<ellipse cx="100" cy="221" rx="54" ry="5" fill="rgba(0,0,0,.12)"/>`;
+  // Körper + Schal
+  s += `<ellipse cx="100" cy="190" rx="58" ry="34" fill="${fur}"/><ellipse cx="100" cy="196" rx="32" ry="24" fill="${muzzle}"/>`;
+  s += `<path d="M54 160 Q100 188 146 160 L148 178 Q100 208 52 178 Z" fill="#D9534F"/><path d="M124 176 L134 204 L150 198 L142 172 Z" fill="#C0392B"/>`;
+  // Ohren
+  s += `<circle cx="52" cy="62" r="24" fill="${fur}"/><circle cx="52" cy="62" r="13" fill="#E8B7A0"/><circle cx="148" cy="62" r="24" fill="${fur}"/><circle cx="148" cy="62" r="13" fill="#E8B7A0"/>`;
+  // Kopf
+  s += `<ellipse cx="100" cy="104" rx="64" ry="58" fill="${fur}"/>`;
+  if(L.messy) s += `<path d="M90 50 q-5 -14 2 -22 M100 48 q2 -16 9 -19 M110 51 q7 -10 5 -19" fill="none" stroke="${fur}" stroke-width="5" stroke-linecap="round"/>`;
+  s += `<ellipse cx="100" cy="124" rx="28" ry="22" fill="${muzzle}"/>`;
+  if(L.bags) s += `<ellipse cx="78" cy="110" rx="10" ry="4.5" fill="rgba(70,50,100,.28)"/><ellipse cx="122" cy="110" rx="10" ry="4.5" fill="rgba(70,50,100,.28)"/>`;
+  s += eyeAt(76,98) + eyeAt(124,98);
+  if(L.brows==='worried') s += `<path d="M64 86 L88 78 M136 86 L112 78" stroke="${dark}" stroke-width="3.5" stroke-linecap="round"/>`;
+  if(L.brows==='sad') s += `<path d="M62 90 L90 76 M138 90 L110 76" stroke="${dark}" stroke-width="3.5" stroke-linecap="round"/>`;
+  if(L.cheeks) s += `<ellipse cx="62" cy="120" rx="10" ry="6.5" fill="#F29A9A" opacity=".65"/><ellipse cx="138" cy="120" rx="10" ry="6.5" fill="#F29A9A" opacity=".65"/>`;
+  s += `<ellipse cx="100" cy="114" rx="10" ry="7" fill="${dark}"/><path d="M100 120 L100 128" stroke="${dark}" stroke-width="3" stroke-linecap="round"/>`;
+  s += `<path d="${mouths[L.mouth]}" fill="none" stroke="${dark}" stroke-width="3.5" stroke-linecap="round"/>`;
+  if(L.tear) s += `<path d="M70 112 q-5 10 0 14 q5 -4 0 -14z" fill="#8EC9F0"/>`;
+  if(L.sweat) s += `<path d="M148 76 q-7 12 0 17 q7 -5 0 -17z" fill="#8EC9F0"/>`;
+  if(L.cap) s += `<polygon points="100,26 152,46 100,66 48,46" fill="#2E2A3B"/><rect x="76" y="56" width="48" height="12" rx="5" fill="#2E2A3B"/><path d="M142 50 L142 70" stroke="#F2A007" stroke-width="3"/><circle cx="142" cy="72" r="4" fill="#F2A007"/>`;
+  if(L.band) s += `<path d="M44 76 Q100 52 156 76" fill="none" stroke="#D9534F" stroke-width="9" stroke-linecap="round"/><circle cx="100" cy="64" r="6" fill="#fff"/>`;
+  if(L.sparkle) s += `<path class="spark" d="M26 40 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3z" fill="#F2C94C"/><path class="spark s2" d="M170 30 l2.5 6 6 2.5 -6 2.5 -2.5 6 -2.5 -6 -6 -2.5 6 -2.5z" fill="#F2C94C"/>`;
+  if(L.zzz) s += `<text class="zzz" x="146" y="48" font-size="22" font-weight="700" fill="#6B7FD7" font-family="var(--font-sans,sans-serif)">Z</text><text class="zzz z2" x="162" y="30" font-size="16" font-weight="700" fill="#6B7FD7" font-family="var(--font-sans,sans-serif)">z</text>`;
+  return s + `</svg>`;
+}
+
+/* Gemalter Lern Bär: baer-<stimmung>.webp wird genutzt, wenn die Datei existiert; sonst baer-froh.webp mit Filter und Zeichen */
+function bearImg(m){
+  return `<div class="bearshadow"></div><div class="bear3d"><img class="bearimg" src="baer-${m}.webp" alt="Lern Bär, Stimmung: ${m}" draggable="false" onerror="bearFallback(this,'${m}')"></div>`;
+}
+function bearFallback(img, m){
+  img.onerror = null; img.src = 'baer-froh.webp'; img.classList.add('fx-'+m);
+  const w = img.closest('.bearwrap'); if(w) w.classList.add('fb');
+}
+/* 3D-Gefühl: Bär dreht sich leicht, folgt dem Finger/Mauszeiger und lässt sich per Wischen drehen */
+const tilt = {ry:0, rx:0, lookY:0, lookX:0, spin:0, drag:null, moved:false, raf:0, t0:0, on:false};
+function startBearTilt(){
+  if(!tilt.on){
+    tilt.on = true;
+    window.addEventListener('pointermove', e=>{
+      const w = document.querySelector('.bearwrap'); if(!w) return;
+      if(tilt.drag){ const dx = e.clientX - tilt.drag.x; if(Math.abs(dx)>3) tilt.moved = true; tilt.spin = Math.max(-40,Math.min(40,tilt.spin + dx*0.6)); tilt.drag.x = e.clientX; return; }
+      const r = w.getBoundingClientRect(), cx = r.left + r.width/2, cy = r.top + r.height/2;
+      tilt.lookY = Math.max(-1,Math.min(1,(e.clientX-cx)/(window.innerWidth/2)))*24;
+      tilt.lookX = -Math.max(-1,Math.min(1,(e.clientY-cy)/(window.innerHeight/2)))*10;
+    });
+    document.addEventListener('pointerdown', e=>{ if(e.target.closest && e.target.closest('.bearwrap')){ tilt.drag = {x:e.clientX}; tilt.moved = false; } });
+    const end = () => { tilt.drag = null; };
+    window.addEventListener('pointerup', end); window.addEventListener('pointercancel', end);
+    document.addEventListener('click', e=>{ if(tilt.moved && e.target.closest && e.target.closest('.bearwrap')){ e.stopPropagation(); e.preventDefault(); } tilt.moved = false; }, true);
+  }
+  if(!tilt.raf){ tilt.t0 = performance.now(); tilt.raf = requestAnimationFrame(bearTiltTick); }
+}
+function bearTiltTick(now){
+  const b = document.querySelector('.bear3d');
+  if(!b || document.visibilityState!=='visible'){ tilt.raf = 0; return; }
+  const t = (now - tilt.t0)/1000, calm = reducedMotion() ? 0 : 1;
+  if(!tilt.drag) tilt.spin *= 0.9;
+  const ryT = Math.max(-50,Math.min(50,tilt.lookY*calm + Math.sin(t*0.9)*7*calm + tilt.spin)), rxT = tilt.lookX*calm + Math.sin(t*1.3)*1.5*calm;
+  tilt.ry += (ryT - tilt.ry)*0.15; tilt.rx += (rxT - tilt.rx)*0.15;
+  const y = Math.sin(t*1.8)*2*calm;
+  b.style.transform = `translateY(${y}px) rotateX(${tilt.rx.toFixed(2)}deg) rotateY(${tilt.ry.toFixed(2)}deg)`;
+  const sh = b.parentNode.querySelector('.bearshadow'); if(sh) sh.style.transform = `scaleX(${(1 - Math.min(Math.abs(tilt.ry),90)/260).toFixed(3)}) translateX(${(-tilt.ry*0.25).toFixed(1)}px)`;
+  tilt.raf = requestAnimationFrame(bearTiltTick);
+}
+
+function bearCardHtml(plan){
+  const mood = learnMood(plan), lines = BEAR_LINES[mood.m], line = lines[bearIdx % lines.length];
+  const n = (k,one,many) => `${k} ${k===1?one:many}`;
+  let facts = '';
+  if(mood.m==='traurig' || mood.m==='besorgt' || mood.m==='okay') facts = `${n(mood.backlog,'Thema','Themen')} aus den letzten Tagen ${mood.backlog===1?'wartet':'warten'} noch.`;
+  else if(mood.m==='froh') facts = mood.open ? `${n(mood.open,'Thema wartet','Themen warten')} heute auf dich.` : '';
+  else if(mood.m==='stolz') facts = mood.pending===0 ? 'Du hast alles geschafft!' : mood.ahead ? `Du bist ${n(mood.ahead,'Thema','Themen')} voraus.` : 'Alles für heute erledigt.';
+  return `<div class="bearcard"><div class="bearwrap" id="bearmount" data-mood="${mood.m}" onclick="bearTap()" role="button" tabindex="0" aria-label="Lern Bär antippen">${bearSvg(mood.m)}</div>
+    <div class="bubble"><div class="small muted" style="margin-bottom:2px">Lern Bär</div><div id="bearmsg" style="font-weight:600">${esc(line)}</div>${facts?`<div class="small muted" style="margin-top:4px">${esc(facts)}</div>`:''}</div></div>`;
+}
+function bearTap(){
+  const plan = computePlan(), m = learnMood(plan).m, lines = BEAR_LINES[m]; bearIdx++;
+  const el = document.getElementById('bearmsg'); if(el) el.textContent = lines[bearIdx % lines.length];
+  const w = document.querySelector('.bearwrap'); if(w){ w.classList.remove('hop'); void w.offsetWidth; w.classList.add('hop'); }
+  try{ navigator.vibrate && navigator.vibrate(10); }catch(e){}
+}
+
+/* ---------- Lern Bär in 3D (three.js, lokal eingebunden). Ohne WebGL bleibt der flache SVG-Bär. ---------- */
+const BEAR3D = {
+  stolz:   {fur:'#F2BC45', face:'happy',  mouth:'smile', cheeks:true, cap:true, sparkle:true, pot:true, arm:'up'},
+  froh:    {fur:'#F2BC45', face:'open',   mouth:'smile', cheeks:true, pot:true},
+  okay:    {fur:'#E8B756', face:'open',   mouth:'flat'},
+  besorgt: {fur:'#D8B068', face:'open',   mouth:'wavy',  brows:0.38, sweat:true},
+  traurig: {fur:'#BDAE94', face:'open',   mouth:'frown', brows:0.6,  tear:true, bags:true, messy:true, droop:true},
+  schlaf:  {fur:'#EDB84C', face:'closed', mouth:'smile', zzz:true, tilt:true},
+  pruefung:{fur:'#F2BC45', face:'open',   mouth:'smile', cheeks:true, band:true, arm:'fist'},
+  start:   {fur:'#F2BC45', face:'open',   mouth:'smile', cheeks:true, arm:'wave'}
+};
+let gl3 = null, gl3Loading = false, gl3Failed = false;
+
+function webglOk(){ try{ const c = document.createElement('canvas'); return !!(c.getContext('webgl') || c.getContext('experimental-webgl')); }catch(e){ return false; } }
+
+function build3dBear(m){
+  // Stil: Tusche-Umrisse + weiche Aquarell-Flächen (Toon-Schattierung), sitzender Bär mit Honigtopf
+  const T = THREE, L = BEAR3D[m] || BEAR3D.froh, root = new T.Group(), parts = {eyes:[], extras:[]};
+  if(!gl3.toonMap){ const g = new T.DataTexture(Uint8Array.from([150,195,235,255]),4,1,T.LuminanceFormat); g.minFilter = g.magFilter = T.NearestFilter; g.needsUpdate = true; gl3.toonMap = g; }
+  const toon = (c,o={}) => new T.MeshToonMaterial(Object.assign({color:c, gradientMap:gl3.toonMap}, o));
+  const ink = new T.MeshBasicMaterial({color:'#2A1E16', side:T.BackSide});
+  const furM = toon(L.fur), creamM = toon('#FBE3A6'), darkM = new T.MeshBasicMaterial({color:'#241812'}), pinkM = toon('#F4A08E',{transparent:true,opacity:.6});
+  const sph = new T.SphereGeometry(1,26,18);
+  // Ellipsoid mit Tusche-Umriss (der Umriss ist eine etwas größere, nach innen gewendete Kopie)
+  const ell = (m_,x,y,z,sx,sy,sz,outline=true,geo=sph) => { const g = new T.Group(); g.position.set(x,y,z); const me = new T.Mesh(geo,m_); me.scale.set(sx,sy,sz); g.add(me);
+    if(outline){ const o = new T.Mesh(geo,ink); o.scale.set(sx*1.045+0.012,sy*1.045+0.012,sz*1.045+0.012); g.add(o); } return g; };
+  const add = (parent,node) => { parent.add(node); return node; };
+  // Körper, leicht nach hinten gelehnt
+  const body = add(root, ell(furM,0,-0.85,-0.05,1.12,1.12,1.0)); body.rotation.x = -0.12; parts.body = body.children[0];
+  const belly = add(root, ell(creamM,0,-0.95,0.68,0.7,0.76,0.34,false)); belly.rotation.x = -0.12;
+  // Beine nach vorn, Fußsohlen heller
+  [-1,1].forEach(s=>{ const leg = add(root, ell(furM,s*0.72,-1.62,0.95,0.46,0.42,0.72)); leg.rotation.y = s*-0.28;
+    const sole = add(leg, ell(creamM,0,0.02,0.7,0.34,0.3,0.09,false)); sole.position.z = 0.7*0.72+0.02; });
+  // Arme: Pivot an der Schulter
+  const mkArm = s => { const g = new T.Group(); g.position.set(s*0.98,-0.35,0.25); g.add(ell(furM,s*0.1,-0.4,0.12,0.3,0.5,0.3)); root.add(g); return g; };
+  parts.armL = mkArm(-1); parts.armR = mkArm(1);
+  const armRest = L.pot ? [0.95,0.5] : [0.25,0.28]; parts.armRest = armRest;
+  // Schal
+  const scarf = new T.Mesh(new T.TorusGeometry(0.8,0.19,14,40), toon('#D9534F')); scarf.position.set(0,-0.08,0.05); scarf.rotation.x = Math.PI/2; scarf.scale.set(1,1,1.2); root.add(scarf);
+  const scarfO = new T.Mesh(new T.TorusGeometry(0.8,0.19,14,40), ink); scarfO.position.copy(scarf.position); scarfO.rotation.copy(scarf.rotation); scarfO.scale.set(1.02,1.02,1.26); root.add(scarfO);
+  add(root, ell(toon('#C0392B'),0.62,-0.42,0.78,0.2,0.46,0.12)).rotation.z = -0.25;
+  // Kopf
+  const head = new T.Group(); head.position.set(0,0.66,0); root.add(head); parts.head = head;
+  head.add(ell(furM,0,0,0,1.0,0.92,0.96));
+  [-1,1].forEach(s=>{ head.add(ell(furM,s*0.74,0.72,-0.05,0.3,0.3,0.2)); head.add(ell(toon('#EFB98A'),s*0.74,0.72,0.1,0.17,0.17,0.07,false)); });
+  const snoutR = {x:0.46,y:0.34,z:0.4}, snoutC = {x:0,y:-0.16,z:0.82};
+  head.add(ell(creamM,snoutC.x,snoutC.y,snoutC.z,snoutR.x,snoutR.y,snoutR.z,false));
+  const snoutZ = (x,y) => { const q = 1 - Math.pow(x/snoutR.x,2) - Math.pow((y-snoutC.y)/snoutR.y,2); return snoutC.z + snoutR.z*Math.sqrt(Math.max(q,0)); };
+  const nose = ell(darkM,0,0.0,snoutZ(0,0.0)-0.02,0.2,0.13,0.12,false); nose.rotation.z = 0.12; head.add(nose);
+  const eyeY = 0.2, headZ = (x,y) => 0.96*Math.sqrt(Math.max(0, 1 - x*x - Math.pow(y/0.92,2)));
+  [-1,1].forEach(s=>{
+    const x = s*0.34, z = headZ(x,eyeY)+0.01;
+    if(L.face==='open'){ const e = ell(darkM,x,eyeY,z,0.07,0.085,0.05,false); head.add(e); parts.eyes.push(e.children[0]);
+      head.add(ell(new T.MeshBasicMaterial({color:'#ffffff'}),x+0.025,eyeY+0.035,z+0.04,0.022,0.022,0.022,false)); }
+    else { const arc = new T.Mesh(new T.TorusGeometry(0.11,0.03,8,20,Math.PI),darkM); arc.position.set(x,eyeY+(L.face==='happy'?-0.04:0.04),z+0.02); arc.rotation.z = L.face==='happy' ? 0 : Math.PI; head.add(arc); }
+    // kleine Augenbrauen-Striche wie in der Zeichnung; bei Sorge/Trauer schräg
+    const slant = L.brows ? -s*L.brows : -s*0.12*(L.face==='closed'?0:1);
+    const br = ell(darkM,x,eyeY+0.2,headZ(x,eyeY+0.2),0.12,0.026,0.03,false); br.rotation.z = slant; head.add(br);
+    if(L.bags) head.add(ell(toon('#5B4A7A',{transparent:true,opacity:.35}),x,eyeY-0.15,headZ(x,eyeY-0.15)-0.01,0.14,0.05,0.04,false));
+    if(L.cheeks){ const cx = s*0.62, c = ell(pinkM,cx,-0.12,headZ(cx,-0.12)-0.01,0.16,0.11,0.05,false); c.rotation.y = s*0.7; head.add(c); }
+  });
+  const pts = [];
+  for(let i=-8;i<=8;i++){ const t = i/8, x = 0.22*t; let y;
+    if(L.mouth==='smile') y = -0.24-0.1*(1-t*t)+0.1; else if(L.mouth==='frown') y = -0.24+0.1*(1-t*t)-0.08; else if(L.mouth==='wavy') y = -0.28+0.035*Math.sin(t*Math.PI*3); else y = -0.27;
+    pts.push(new T.Vector3(x,y,snoutZ(x,y)+0.012)); }
+  head.add(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts),24,0.026,8,false),darkM));
+  head.add(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3([new T.Vector3(0,-0.09,snoutZ(0,-0.09)+0.01),new T.Vector3(0,pts[8].y+0.03,snoutZ(0,pts[8].y)+0.012)]),4,0.022,8,false),darkM));
+  if(L.messy){ [-0.2,0,0.2].forEach((x,i)=>{ const c = new T.Mesh(new T.CylinderGeometry(0.03,0.05,0.4,8),furM); c.position.set(x,1.0,0); c.rotation.z = (i-1)*-0.5; head.add(c); }); }
+  if(L.cap){ const cap = new T.Group(); cap.position.set(0,0.82,0);
+    const mk = (geo,c,y) => { const me = new T.Mesh(geo,toon(c)); me.position.y = y; cap.add(me); return me; };
+    mk(new T.CylinderGeometry(0.5,0.58,0.3,20),'#2B2838',0.02);
+    const board = mk(new T.BoxGeometry(1.7,0.08,1.7),'#2B2838',0.2); board.rotation.y = Math.PI/4;
+    const cord = new T.Mesh(new T.CylinderGeometry(0.018,0.018,0.55,6),toon('#F2B233')); cord.position.set(0.55,0.0,0.55); cord.rotation.z = 0.2; cap.add(cord);
+    const tas = new T.Mesh(new T.SphereGeometry(0.07,10,8),toon('#F2B233')); tas.position.set(0.6,-0.27,0.55); cap.add(tas); head.add(cap); }
+  if(L.band){ const band = new T.Mesh(new T.TorusGeometry(0.9,0.075,10,36),toon('#D9534F')); band.position.set(0,0.42,-0.02); band.rotation.x = Math.PI/2; band.scale.set(1,1.02,0.96); head.add(band);
+    head.add(ell(toon('#ffffff'),0,0.46,0.88,0.12,0.12,0.04,false)); }
+  // Honigtopf (blaugrau, Bänder), Löffel, Honig und Tropfen
+  if(L.pot){ const pot = new T.Group(); pot.position.set(0,-1.2,1.35); pot.scale.setScalar(0.95);
+    const prof = [[0.01,-0.5],[0.34,-0.48],[0.55,-0.3],[0.62,0.0],[0.55,0.3],[0.38,0.48],[0.42,0.56],[0.4,0.62]].map(p=>new T.Vector2(p[0],p[1]));
+    const lathe = new T.LatheGeometry(prof,28); pot.add(new T.Mesh(lathe,toon('#8FB6C2',{side:T.DoubleSide})));
+    const potInk = new T.Mesh(lathe,ink); potInk.scale.setScalar(1.05); pot.add(potInk);
+    [-0.2,0.05,0.28].forEach(y=>{ const r = 0.6-Math.abs(y)*0.18; const b = new T.Mesh(new T.TorusGeometry(r,0.018,6,32),toon('#6E98A6')); b.position.y = y; b.rotation.x = Math.PI/2; pot.add(b); });
+    const honey = new T.Mesh(new T.CylinderGeometry(0.37,0.37,0.04,24),toon('#F2AE2E')); honey.position.y = 0.5; pot.add(honey);
+    const dip = new T.Group(); dip.position.set(0.05,0.5,0.02); dip.rotation.z = 0.42; dip.rotation.x = -0.2;
+    const stick = new T.Mesh(new T.CylinderGeometry(0.035,0.035,1.1,8),toon('#B4783C')); stick.position.y = 0.52; dip.add(stick);
+    const head2 = new T.Mesh(new T.CylinderGeometry(0.1,0.1,0.22,10),toon('#C48A4A')); head2.position.y = 0.05; dip.add(head2);
+    pot.add(dip);
+    const drop = ell(toon('#F2AE2E',{transparent:true,opacity:.95}),0.05,0.4,0.05,0.045,0.07,0.045,false); pot.add(drop); parts.drop = drop;
+    root.add(pot); parts.pot = pot;
+    // Honigpfütze am Boden
+    const pud = new T.Mesh(new T.CircleGeometry(1,24),new T.MeshBasicMaterial({color:'#F2B233',transparent:true,opacity:.85})); pud.rotation.x = -Math.PI/2; pud.position.set(-0.7,-2.08,1.7); pud.scale.set(0.55,0.32,1); root.add(pud); }
+  if(L.sparkle){ for(let i=0;i<3;i++){ const sp = new T.Mesh(new T.OctahedronGeometry(0.1),new T.MeshBasicMaterial({color:'#FFD54A'})); sp.userData.i = i; root.add(sp); parts.extras.push(sp); } }
+  if(L.sweat){ const d = new T.Group(); d.add(ell(new T.MeshBasicMaterial({color:'#8EC9F0',transparent:true,opacity:.85}),0,0,0,0.09,0.09,0.09,false)); const cn = new T.Mesh(new T.ConeGeometry(0.075,0.17,10),new T.MeshBasicMaterial({color:'#8EC9F0',transparent:true,opacity:.85})); cn.position.y = 0.14; d.add(cn); d.position.set(0.95,1.2,0.35); head.add(d); parts.sweat = d; }
+  if(L.tear){ const d = new T.Mesh(sph,new T.MeshBasicMaterial({color:'#8EC9F0',transparent:true,opacity:.9})); d.scale.set(0.06,0.09,0.05); d.position.set(-0.42,0.05,0.93); head.add(d); parts.tear = d; }
+  if(L.zzz){ const mk = (txt,size) => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); x.font = 'bold 100px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#6B7FD7'; x.fillText(txt,64,70);
+      const sp = new T.Sprite(new T.SpriteMaterial({map:new T.CanvasTexture(c),transparent:true})); sp.scale.set(size,size,1); root.add(sp); return sp; };
+    parts.zs = [mk('Z',0.6), mk('z',0.42), mk('z',0.3)]; }
+  // weicher Schatten am Boden
+  const sc = document.createElement('canvas'); sc.width = sc.height = 64; const sx = sc.getContext('2d'), gr = sx.createRadialGradient(32,32,2,32,32,30); gr.addColorStop(0,'rgba(60,40,20,.35)'); gr.addColorStop(1,'rgba(60,40,20,0)'); sx.fillStyle = gr; sx.fillRect(0,0,64,64);
+  const shadow = new T.Mesh(new T.PlaneGeometry(3.8,2.6),new T.MeshBasicMaterial({map:new T.CanvasTexture(sc),transparent:true,depthWrite:false})); shadow.rotation.x = -Math.PI/2; shadow.position.set(0,-2.12,0.5); root.add(shadow);
+  root.userData = {parts, look:L};
+  return root;
+}
+
+function ensure3d(){
+  if(gl3 || gl3Failed || gl3Loading) return !!gl3;
+  if(!webglOk()){ gl3Failed = true; return false; }
+  gl3Loading = true;
+  loadScript('three.min.js').then(()=>{ gl3Loading = false; init3d(); mount3dBear(); }).catch(()=>{ gl3Loading = false; gl3Failed = true; });
+  return false;
+}
+function init3d(){
+  const T = THREE, W = 170, H = 200;
+  const renderer = new T.WebGLRenderer({antialias:true, alpha:true, powerPreference:'low-power'});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2)); renderer.setSize(W,H,false); renderer.setClearColor(0x000000,0);
+  renderer.domElement.className = 'bear3dcanvas'; renderer.domElement.setAttribute('aria-label','Lern Bär in 3D'); renderer.domElement.setAttribute('role','img');
+  const scene = new T.Scene(), cam = new T.PerspectiveCamera(36,W/H,0.1,50); cam.position.set(0,0.3,8.7); cam.lookAt(0,0.0,0);
+  scene.add(new T.HemisphereLight(0xffffff,0xd9b88a,0.42)); const dl = new T.DirectionalLight(0xffffff,0.42); dl.position.set(2.5,4,5); scene.add(dl);
+  const fill = new T.DirectionalLight(0xffe9c8,0.1); fill.position.set(-3,1,2); scene.add(fill);
+  gl3 = {renderer, scene, cam, bear:null, mood:null, t0:performance.now(), spin:0, spinV:0, drag:null, look:{x:0,y:0}, hop:0, raf:0, blinkAt:2, moved:false};
+  const cv = renderer.domElement; cv.style.touchAction = 'pan-y';
+  cv.addEventListener('pointerdown', e=>{ gl3.drag = {x:e.clientX, id:e.pointerId}; gl3.moved = false; try{ cv.setPointerCapture(e.pointerId); }catch(_){} });
+  cv.addEventListener('pointermove', e=>{ if(!gl3.drag) return; const dx = e.clientX-gl3.drag.x; if(Math.abs(dx)>3) gl3.moved = true; gl3.spin += dx*0.012; gl3.drag.x = e.clientX; });
+  const end = () => { if(gl3) gl3.drag = null; }; cv.addEventListener('pointerup',end); cv.addEventListener('pointercancel',end);
+  cv.addEventListener('click', e=>{ if(gl3.moved){ e.stopPropagation(); gl3.moved = false; } else gl3.hop = 1; }, true);
+  window.addEventListener('pointermove', e=>{ if(!gl3 || !cv.isConnected) return; const r = cv.getBoundingClientRect(); gl3.look.x = Math.max(-1,Math.min(1,(e.clientX-(r.left+r.width/2))/(window.innerWidth/2))); gl3.look.y = Math.max(-1,Math.min(1,(e.clientY-(r.top+r.height/2))/(window.innerHeight/2))); });
+}
+function dispose3d(obj){ obj.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material){ (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{ if(m.map) m.map.dispose(); m.dispose(); }); } }); }
+function mount3dBear(){
+  const host = document.getElementById('bearmount'); if(!host) return;
+  if(!ensure3d() || !gl3) return;
+  const m = host.dataset.mood;
+  if(gl3.mood !== m){ if(gl3.bear){ gl3.scene.remove(gl3.bear); dispose3d(gl3.bear); } gl3.bear = build3dBear(m); gl3.scene.add(gl3.bear); gl3.mood = m; gl3.hop = 0; }
+  host.innerHTML = ''; host.appendChild(gl3.renderer.domElement);
+  if(!gl3.raf) gl3.raf = requestAnimationFrame(tick3d);
+}
+function tick3d(now){
+  if(!gl3) return;
+  const cv = gl3.renderer.domElement;
+  if(!cv.isConnected || document.visibilityState!=='visible'){ gl3.raf = 0; return; }                 // läuft nur, solange der Bär sichtbar ist
+  const t = (now - gl3.t0)/1000, b = gl3.bear, P = b.userData.parts, L = b.userData.look, head = P.head, reduce = reducedMotion();
+  // Drehen per Wischen, federt zurück
+  if(!gl3.drag) gl3.spin *= 0.92; b.rotation.y = gl3.spin;
+  // Atmen und Wippen
+  const calm = reduce ? 0 : 1; b.position.y = Math.sin(t*1.8)*0.04*calm; P.body.scale.y = 1.12 + Math.sin(t*1.8)*0.012*calm;
+  // Kopf folgt dem Finger/Mauszeiger
+  const tx = L.droop ? 0.28 : L.tilt ? 0.12 : 0, tz = L.tilt ? 0.28 : 0;
+  head.rotation.y += ((gl3.look.x*0.55*(L.tilt?0:1)) - head.rotation.y)*0.12; head.rotation.x += ((tx + gl3.look.y*0.25*(L.droop||L.tilt?0:1)) - head.rotation.x)*0.12; head.rotation.z += (tz - head.rotation.z)*0.1;
+  // Blinzeln
+  if(P.eyes.length){ const k = (t > gl3.blinkAt && t < gl3.blinkAt+0.14) ? 0.1 : 1; P.eyes.forEach(e=>e.scale.y = 0.11*k); if(t > gl3.blinkAt+0.14) gl3.blinkAt = t + 2.5 + Math.random()*3; }
+  // Hüpfer beim Antippen
+  if(gl3.hop>0){ gl3.hop = Math.max(0,gl3.hop-0.035); const h = Math.sin((1-gl3.hop)*Math.PI); b.position.y += h*0.5; b.scale.set(1+(0.04*Math.sin((1-gl3.hop)*Math.PI*2)),1-(0.05*Math.sin((1-gl3.hop)*Math.PI*2)),1); } else b.scale.set(1,1,1);
+  // Arme
+  const wave = Math.sin(t*5), hug = !!L.pot;                       // mit Topf: beide Arme umfassen ihn
+  P.armL.rotation.set(hug?-0.9:-0.1, 0, hug?0.55:-0.28); P.armR.rotation.set(hug?-0.9:-0.1, 0, hug?-0.55:0.28);
+  if(L.arm==='wave' && !reduce) P.armR.rotation.set(0,0,2.3+wave*0.35); else if(L.arm==='up') P.armR.rotation.set(0,0,2.5+Math.sin(t*3)*0.12); else if(L.arm==='fist') P.armR.rotation.set(0,0,2.0);
+  if(L.droop) { P.armL.rotation.set(0,0,-0.1); P.armR.rotation.set(0,0,0.1); }
+  if(P.drop){ const k = (t*0.7)%1; P.drop.position.y = 0.42 - k*0.8; P.drop.position.x = 0.05+Math.sin(t*0.7)*0.0; P.drop.visible = k>0.05; }
+  // Extras
+  P.extras.forEach(sp=>{ const a = t*1.4 + sp.userData.i*2.1; sp.position.set(Math.cos(a)*1.5, 1.2+Math.sin(a*1.3)*0.35+0.7, Math.sin(a)*0.8); sp.rotation.y = t*2; sp.rotation.x = t*1.3; });
+  if(P.sweat){ const k = (t*0.6)%1; P.sweat.position.set(0.95,1.25-k*0.55,0.35); P.sweat.traverse(o=>{ if(o.material) o.material.opacity = 0.85*(1-k*k); }); }
+  if(P.tear){ const k = (t*0.5)%1; P.tear.position.y = 0.05-k*0.45; P.tear.material.opacity = 0.9*(1-k); }
+  if(P.zs){ P.zs.forEach((s,i)=>{ const k = ((t*0.35)+i*0.33)%1; s.position.set(1.0+i*0.2+k*0.3, 1.5+k*1.1, 0.2); s.material.opacity = Math.sin(k*Math.PI); }); }
+  if(P.pot) P.pot.rotation.z = Math.sin(t*1.8)*0.03;
+  gl3.renderer.render(gl3.scene, gl3.cam);
+  gl3.raf = requestAnimationFrame(tick3d);
+}
+document.addEventListener('visibilitychange', ()=>{ if(gl3 && !gl3.raf && document.visibilityState==='visible') gl3.raf = requestAnimationFrame(tick3d); });
 
 /* Wischen im Kalender: links = nächster Monat, rechts = voriger Monat */
 let swipe = null;
