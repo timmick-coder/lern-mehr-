@@ -325,7 +325,7 @@ function computePlan(){
       if(lighter){ target -= lighter; if(target<=0) continue; }
       while(q[id].length){
         const s = q[id][0];
-        // Passt das Thema noch in den Tagesaufwand? Es kommt dran, wenn mindestens sein halber Aufwand noch frei ist.
+        // Passt das Thema noch in den Tagesaufwand? Mindestens sein halber Aufwand muss frei sein.
         if(used + s.w/2 > target) break;
         (out[d] ||= []).push({...s,done:!!S.done[s.key]}); used += s.w; rest[id] -= s.w; q[id].shift();
       }
@@ -344,6 +344,13 @@ function computePlan(){
   // Erledigtes, das im Plan keinen Platz mehr hat (z. B. Fach ohne Datum), bleibt trotzdem an seinem Tag sichtbar
   const placed = new Set(Object.values(days).flat().map(t=>t.key));
   for(const [k,d] of Object.entries(S.done)){ const s = byKey[k]; if(s && !placed.has(k)) add(d,{...s,done:true}); }
+  // Feste Reihenfolge innerhalb eines Tages: Fach (nach Prüfung), dann Durchgang (Lernen vor Wiederholen), dann Reihenfolge der Themen.
+  // So springt ein abgehaktes oder verschobenes Thema nicht an eine andere Stelle der Liste.
+  const subRank = Object.fromEntries(S.subjects.map((s,i)=>[s.id, (s.examDate||'9999')+String(i).padStart(3,'0')]));
+  const topicRank = Object.fromEntries(S.topics.map((t,i)=>[t.id,i]));
+  for(const ts of Object.values(days)){
+    ts.sort((a,b)=> (subRank[a.subjectId]||'').localeCompare(subRank[b.subjectId]||'') || a.round-b.round || (topicRank[a.topicId]??0)-(topicRank[b.topicId]??0) || a.part-b.part);
+  }
   return {days,info};
 }
 
@@ -528,7 +535,7 @@ function viewSettings(){
     <div class="row" style="margin-top:10px"><button class="btn primary" onclick="openWizard()">＋ Fach hinzufügen</button></div></div>
 
   <div class="card"><h2>Planung</h2>
-    <p class="small muted" style="margin:0 0 12px">Die App verteilt deine Themen selbst auf die Tage bis zur Prüfung. Zum ersten Lernen bekommst du weniger Themen pro Tag als später zum Wiederholen, denn Lernen braucht mehr Zeit. Ein Thema ist erledigt, sobald du es abhakst.</p>
+    <p class="small muted" style="margin:0 0 12px">Die App verteilt deine Themen selbst auf die Tage bis zur Prüfung. Die Themen eines Fachs kommen in der Reihenfolge deiner Themenliste dran. Zum ersten Lernen bekommst du weniger Themen pro Tag als später zum Wiederholen, denn Lernen braucht mehr Zeit. Ein Thema ist erledigt, sobald du es abhakst.</p>
     <label class="f">Fächer pro Tag
       <select onchange="setPerDay(+this.value)">${[[0,'Alle Fächer jeden Tag'],[1,'1 Fach pro Tag'],[2,'Bis zu 2 Fächer pro Tag'],[3,'Bis zu 3 Fächer pro Tag'],[4,'Bis zu 4 Fächer pro Tag']].map(([v,l])=>`<option value="${v}" ${(+S.subjectsPerDay||0)===v?'selected':''}>${l}</option>`).join('')}</select>
       <span class="small muted">Die Fächer wechseln sich ab. Jeden Tag kommen die dringendsten dran, die anderen bekommen dafür an ihren Tagen mehr.</span></label></div>
