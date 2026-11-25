@@ -455,15 +455,20 @@ function computePlan(){
   // Tag für Tag automatisch verteilen: jedes Fach gleichmäßig (bzw. steigend) auf seine verfügbaren Tage
   const out = {}, q = {}, rest = {};
   const pins = {}, away = {};                           // vom Nutzer verschobene Themen: fester Tag / entlasteter Tag
+  const carried = new Set(), fpAll = S.firstPlanned || {};
   for(const p of plans){
     const id = p.sub.id; q[id] = []; pins[id] = {}; away[id] = {};
     for(const s of p.pending){
-      const mv = S.moves[s.key], dd = S.done[s.key];
+      const mv = S.moves[s.key], dd = S.done[s.key], fpd = fpAll[s.key];
       if(dd && p.avail.includes(dd)) (pins[id][dd] ||= []).push(s);        // erledigt: bleibt an seinem Tag
       else if(mv && p.avail.includes(mv.to)){
         (pins[id][mv.to] ||= []).push(s);
         for(const f of mv.from) away[id][f] = (away[id][f]||0) + s.w;   // am alten Tag nicht wieder auffüllen
       } else if(p.resv[s.key]) (pins[id][p.resv[s.key]] ||= []).push(s);   // große Wiederholung: fester Platz am Ende
+      else if(!dd && fpd && fpd < today && p.avail.length){
+        // Nicht am geplanten Tag geschafft: das Thema rückt nur auf den nächsten Tag (also heute), der übrige Plan bleibt wie er war
+        (pins[id][p.avail[0]] ||= []).push(s); carried.add(s.key);
+      }
       else q[id].push(s);
     }
     rest[id] = p.pending.filter(s=>!p.resv[s.key]).reduce((a,s)=>a+s.w,0);          // Aufwand, nicht Anzahl
@@ -487,10 +492,11 @@ function computePlan(){
       const id = p.sub.id, n = p.reg.length, i = p.reg.indexOf(d), last = i===n-1;
       let used = 0, movedW = 0;
       for(const s of (pins[id][d]||[])){
-        const isMoved = !!S.moves[s.key] && !S.done[s.key];
-        (out[d] ||= []).push({...s,done:!!S.done[s.key],moved:isMoved});
-        // Von dir hierher verschobene Themen belegen den Tag zusätzlich: Was an diesem Tag ohnehin geplant war, bleibt (der Tag wird voller)
-        if(isMoved && !p.resv[s.key]) movedW += s.w; else used += s.w;
+        const isMoved = !!S.moves[s.key] && !S.done[s.key], isCarried = carried.has(s.key);
+        (out[d] ||= []).push({...s,done:!!S.done[s.key],moved:isMoved,carried:isCarried});
+        // Von dir hierher verschobene (oder liegen gebliebene) Themen belegen den Tag zusätzlich: Was an diesem Tag ohnehin geplant war, bleibt (der Tag wird voller)
+        if(isCarried){ /* zählt weder gegen den Tagesaufwand noch in den Rest: der übrige Plan bleibt unverändert */ }
+        else if(isMoved && !p.resv[s.key]) movedW += s.w; else used += s.w;
         if(!p.resv[s.key]) rest[id] -= s.w;
       }
       if(i<0) continue;                                     // Tag der großen Wiederholungen: nur sie
@@ -659,7 +665,8 @@ function taskHtml(t,editable=true,day=''){
   const canMove = !t.done && day && day>=todayIso();
   const mv = canMove ? `<span class="mvs"><button class="btn mv" onclick="moveTask('${t.key}','${day}')" title="Auf den nächsten Lerntag verschieben">${day===todayIso()?'Morgen':'Nächster Tag'} ›</button>
     <button class="btn mv" onclick="openMovePicker('${t.key}','${day}')" title="Tag zum Verschieben wählen" aria-label="Tag zum Verschieben wählen">📅</button></span>` : '';
-  const pinned = t.moved ? `<button class="tag" onclick="unmoveTask('${t.key}')" title="Verschiebung aufheben">verschoben ✕</button>` : '';
+  const pinned = t.moved ? `<button class="tag" onclick="unmoveTask('${t.key}')" title="Verschiebung aufheben">verschoben ✕</button>`
+    : t.carried ? '<span class="tag" title="Am geplanten Tag nicht geschafft, jetzt auf dem nächsten Tag">von früher</span>' : '';
   const line = `${sub?esc(sub.name)+' · ':''}${roundLabel(t.round)}`;
   // Buttons und Datumsfeld liegen außerhalb des Labels, sonst löst ein Tipp darauf das Abhaken (und ein Neuzeichnen) aus
   return `<div class="task ${t.done?'done':''}" data-key="${t.key}" style="--c:${hue(t.subjectId)}">
