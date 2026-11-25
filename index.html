@@ -248,6 +248,27 @@ body{padding-bottom:104px}
 main>h1,main>.muted,main>p.muted,main>div:first-child>.muted,main>div:first-child>h1{text-shadow:0 0 8px rgba(255,251,238,.95),0 0 3px rgba(255,251,238,.95)}
 @media (prefers-color-scheme: dark){main>h1,main>.muted,main>p.muted,main>div:first-child>.muted,main>div:first-child>h1{text-shadow:0 1px 6px rgba(0,0,0,.7)}}
 @media (prefers-color-scheme: dark){.task,.day{background:rgba(255,255,255,.06)}.stat{background:rgba(255,255,255,.06);border-color:rgba(255,226,170,.12)}.tag{background:rgba(255,255,255,.1)}}
+/* Dunkelmodus "Lampenlicht am Abend": warme braune Karten wie Holz und Pergament im Kerzenschein, Hintergrund bleibt gemalt, nur ins Dämmerlicht getaucht */
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#251F18; --card:#30281F; --text:#F8EDD6; --muted:#C4B294; --line:rgba(255,206,140,.24);
+    --accent:#F2B646; --accent-text:#2E1C0A; --ok:#9CCB6E; --warn:#EBA45A; --danger:#EE8076; --free:#38442E; --ink:#F4E6C8; }
+  html,body{background:#1A1F36}
+  .scene{filter:brightness(.74) saturate(.95)}
+  .scene::after{content:'';position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(180deg,rgba(22,30,66,.58) 0%,rgba(52,36,58,.34) 45%,rgba(20,32,26,.52) 100%)}
+  .card{background:linear-gradient(180deg,rgba(54,43,32,.93),rgba(43,34,25,.93));border-color:rgba(255,200,120,.3);
+    box-shadow:0 1px 0 rgba(255,235,200,.07) inset,0 12px 30px -8px rgba(0,0,0,.65)}
+  .modal{background:#30281F;border-color:rgba(255,200,120,.32)}
+  .bearwrap{background:linear-gradient(180deg,#4E4230,#3B3024);border-color:rgba(255,200,120,.3);box-shadow:0 6px 16px -6px rgba(0,0,0,.6)}
+  .bubble{background:linear-gradient(180deg,rgba(54,43,32,.95),rgba(44,35,26,.95))}
+  nav{background:rgba(38,31,23,.86);border-color:rgba(255,200,120,.3)}
+  nav button{color:#D9C8A8}
+  button.btn{background:#3A3025;border-color:rgba(255,200,120,.3);color:var(--text);box-shadow:0 1px 0 rgba(255,235,200,.07) inset,0 2px 4px rgba(0,0,0,.35)}
+  button.btn.primary{background:linear-gradient(180deg,#F5C257,#E09A1B);color:#2E1C0A}
+  input,textarea,select{background:#251F18;border-color:rgba(255,206,140,.26)}
+  .day.today{outline-color:#F2B646}
+  .bar{background:#38442E;border-color:rgba(255,206,140,.3)}
+}
 </style>
 </head>
 <body>
@@ -730,8 +751,7 @@ function viewCal(plan){
       ${tasks.length&&!free?`<span class="muted m">${tasks.filter(t=>t.done).length}/${tasks.length}</span>`:''}</button>`;
   }
   const title = calMonth.toLocaleDateString('de-DE',{month:'long',year:'numeric'});
-  return `<div class="row" style="justify-content:space-between;margin-bottom:8px"><h1 style="margin:0">Kalender</h1>
-      <button class="btn" onclick="replan()" title="Plan an deine Änderungen anpassen"><span class="rp">↻</span> Neu planen</button></div>
+  return `<div class="row" style="justify-content:space-between;margin-bottom:8px"><h1 style="margin:0">Kalender</h1></div>
     ${warnHtml(plan.info)}${overviewHtml(plan.info)}
     <div class="card"><div class="cal-head"><button class="btn" onclick="moveMonth(-1)">‹</button><b>${title}</b><button class="btn" onclick="moveMonth(1)">›</button></div>
     <div class="cal">${cells}</div></div>${dayDetail(plan)}${examsHtml()}`;
