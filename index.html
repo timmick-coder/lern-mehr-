@@ -460,12 +460,18 @@ function computePlan(){
     const share = perDay>0 ? Math.min(1, perDay/Math.max(1,withWork.length)) : 1;
     for(const p of chosen){
       const id = p.sub.id, n = p.reg.length, i = p.reg.indexOf(d), last = i===n-1;
-      let used = 0;
-      for(const s of (pins[id][d]||[])){ (out[d] ||= []).push({...s,done:!!S.done[s.key],moved:!!S.moves[s.key] && !S.done[s.key]}); used += s.w; if(!p.resv[s.key]) rest[id] -= s.w; }
+      let used = 0, movedW = 0;
+      for(const s of (pins[id][d]||[])){
+        const isMoved = !!S.moves[s.key] && !S.done[s.key];
+        (out[d] ||= []).push({...s,done:!!S.done[s.key],moved:isMoved});
+        // Von dir hierher verschobene Themen belegen den Tag zusätzlich: Was an diesem Tag ohnehin geplant war, bleibt (der Tag wird voller)
+        if(isMoved && !p.resv[s.key]) movedW += s.w; else used += s.w;
+        if(!p.resv[s.key]) rest[id] -= s.w;
+      }
       if(i<0) continue;                                     // Tag der großen Wiederholungen: nur sie
       const w = j => 1 + p.k*(n>1 ? j/(n-1) : 0);          // Gewicht steigt Richtung Prüfung
       let sumW = 0; for(let j=i;j<n;j++) sumW += w(j);
-      let target = Math.round(rest[id]*w(i)/(sumW*share));
+      let target = Math.round((rest[id]+movedW)*w(i)/(sumW*share));      // verschobene Themen zählen hier nicht gegen den Tagesaufwand
       if(selecting) target = Math.max(1,target);            // wer drankommt, lernt auch etwas
       if(last) target = rest[id];                           // am letzten Lerntag muss alles Übrige untergebracht werden
       const lighter = last ? 0 : (away[id][d] || 0);
@@ -1085,6 +1091,7 @@ function pickerHtml(){
       ${picker.to?'<button class="btn primary" onclick="confirmPick()">Verschieben</button>':''}</div>
   </div></div>`;
 }
+const DAY_WARN = 5;      // ab so vielen Themen an einem Tag warnt die App beim Verschieben
 function moveTaskTo(key,from,to,ask=true){
   const s = allSessions().find(x=>x.key===key), sub = s && subOf(s.subjectId); if(!sub || !to) return;
   if(to===from) return render();
@@ -1092,9 +1099,13 @@ function moveTaskTo(key,from,to,ask=true){
   if(to<todayIso()){ alert('Du kannst nichts in die Vergangenheit verschieben.'); return render(); }
   if(S.freeDays.includes(to)){ alert('Dieser Tag ist lernfrei. Hebe das zuerst im Kalender auf.'); return render(); }
   const f = d => fmt(d,{weekday:'long',day:'numeric',month:'long'});
-  if(ask && !confirm(`„${s.name}“ (${sub.name}) von ${f(from)} auf ${f(to)} verschieben?\n\nDer restliche Plan passt sich an.`)) return render();
+  // Warnung erst, wenn an dem Tag 5 oder mehr Themen stehen würden
+  const cntTo = (computePlan().days[to]||[]).filter(t=>!t.done && t.key!==key).length + 1;
+  const warn = cntTo >= DAY_WARN ? `Achtung: An diesem Tag wären dann ${cntTo} Themen. Das ist viel.` : '';
+  if(ask && !confirm(`„${s.name}“ (${sub.name}) von ${f(from)} auf ${f(to)} verschieben?${warn?`\n\n${warn}`:''}\n\nDer restliche Plan passt sich an.`)) return render();
   const prev = S.moves[key];
   S.moves[key] = { to, from:[...(prev?prev.from:[]), from].filter(x=>x!==to) }; S.firstPlanned[key] = to; save(true); render();
+  if(!ask && warn) toast(`${f(to)}: ${cntTo} Themen an diesem Tag – das ist viel`);
 }
 function unmoveTask(key){ delete S.moves[key]; delete S.firstPlanned[key]; save(true); render(); }
 function toggleFree(d){ const i=S.freeDays.indexOf(d); if(i>=0) S.freeDays.splice(i,1); else S.freeDays.push(d); save(); render(); }
@@ -1381,7 +1392,9 @@ function moveDayTo(from,to){
   const movable = tasks.filter(t=>{ const s = subOf(t.subjectId); return s && s.examDate && to < s.examDate; });
   const stuck = tasks.length - movable.length, n = movable.length;
   if(!n){ alert('Das geht nicht: An diesem Tag oder davor ist schon die Prüfung.'); return; }
-  if(!confirm(`${n} ${n===1?'Thema':'Themen'} von ${f(from)} auf ${f(to)} verschieben?${stuck?`\n\n${stuck} ${stuck===1?'Thema bleibt':'Themen bleiben'}, weil dann die Prüfung schon vorbei wäre.`:''}\n\nDer restliche Plan passt sich an.`)) return;
+  const cntTo = (computePlan().days[to]||[]).filter(t=>!t.done && !movable.some(m=>m.key===t.key)).length + n;
+  const warn = cntTo >= DAY_WARN ? `\n\nAchtung: An diesem Tag wären dann ${cntTo} Themen. Das ist viel.` : '';
+  if(!confirm(`${n} ${n===1?'Thema':'Themen'} von ${f(from)} auf ${f(to)} verschieben?${warn}${stuck?`\n\n${stuck} ${stuck===1?'Thema bleibt':'Themen bleiben'}, weil dann die Prüfung schon vorbei wäre.`:''}\n\nDer restliche Plan passt sich an.`)) return;
   for(const t of movable){ const prev = S.moves[t.key]; S.moves[t.key] = { to, from:[...(prev?prev.from:[]), from].filter(x=>x!==to) }; S.firstPlanned[t.key] = to; }
   save(true); selDay = to; render();
 }
@@ -1478,8 +1491,7 @@ function learnMood(plan){
   if(examsOn(today).length) return {m:'pruefung', ...base};
   if(S.freeDays.includes(today)) return {m:'schlaf', ...base};
   if(backlog>5) return {m:'traurig', ...base};
-  if(backlog>=3) return {m:'besorgt', ...base};
-  if(backlog>=1) return {m:'okay', ...base};
+  if(backlog>=1) return {m:'besorgt', ...base};          // sobald man hinterher ist: besorgt, und mit jedem Rückstand mehr (siehe data-sev im 3D-Bär)
   if((total>0 && open===0) || ahead>0 || pending===0) return {m:'stolz', ...base};
   return {m:'froh', ...base};
 }
@@ -1566,7 +1578,7 @@ function bearCardHtml(plan){
   if(mood.m==='traurig' || mood.m==='besorgt' || mood.m==='okay') facts = `${n(mood.backlog,'Thema','Themen')} aus den letzten Tagen ${mood.backlog===1?'wartet':'warten'} noch.`;
   else if(mood.m==='froh') facts = mood.open ? `${n(mood.open,'Thema wartet','Themen warten')} heute auf dich.` : '';
   else if(mood.m==='stolz') facts = mood.pending===0 ? 'Du hast alles geschafft!' : mood.ahead ? `Du bist ${n(mood.ahead,'Thema','Themen')} voraus.` : 'Alles für heute erledigt.';
-  return `<div class="bearcard"><div class="bearwrap" id="bearmount" data-mood="${mood.m}" onclick="bearTap()" role="button" tabindex="0" aria-label="Lern Bär antippen">${bearSvg(mood.m)}</div>
+  return `<div class="bearcard"><div class="bearwrap" id="bearmount" data-mood="${mood.m}" data-sev="${mood.backlog||0}" onclick="bearTap()" role="button" tabindex="0" aria-label="Lern Bär antippen">${bearSvg(mood.m)}</div>
     <div class="bubble"><div class="small muted" style="margin-bottom:2px">Lern Bär</div><div id="bearmsg" style="font-weight:600">${esc(line)}</div>${facts?`<div class="small muted" style="margin-top:4px">${esc(facts)}</div>`:''}</div></div>`;
 }
 function bearTap(){
@@ -1592,9 +1604,15 @@ let gl3 = null, gl3Loading = false, gl3Failed = false;
 
 function webglOk(){ try{ const c = document.createElement('canvas'); return !!(c.getContext('webgl') || c.getContext('experimental-webgl')); }catch(e){ return false; } }
 
-function build3dBear(m){
+function build3dBear(m,sev=0){
   // Stil: Tusche-Umrisse + weiche Aquarell-Flächen (Toon-Schattierung), sitzender Bär mit Honigtopf
-  const T = THREE, L = BEAR3D[m] || BEAR3D.froh, root = new T.Group(), parts = {eyes:[], extras:[]};
+  const T = THREE, L = Object.assign({}, BEAR3D[m] || BEAR3D.froh), root = new T.Group(), parts = {eyes:[], extras:[]};
+  if(sev>0 && (m==='besorgt' || m==='traurig')){                                  // je mehr Rückstand, desto extremer
+    const f = Math.min(sev,8)/8; L.sev = sev;
+    L.brows = m==='traurig' ? 0.6 : 0.32 + 0.4*f;                                  // Brauen werden steiler
+    L.fur = '#'+new T.Color(m==='traurig' ? '#BDAE94' : BEAR3D.froh.fur).lerp(new T.Color('#BDAE94'), m==='traurig' ? 0 : f*0.9).getHexString();   // Fell wird grauer
+    if(sev>=2) L.sweat = true;
+  }
   if(!gl3.toonMap){ const g = new T.DataTexture(Uint8Array.from([150,195,235,255]),4,1,T.LuminanceFormat); g.minFilter = g.magFilter = T.NearestFilter; g.needsUpdate = true; gl3.toonMap = g; }
   const toon = (c,o={}) => new T.MeshToonMaterial(Object.assign({color:c, gradientMap:gl3.toonMap}, o));
   const ink = new T.MeshBasicMaterial({color:'#2A1E16', side:T.BackSide});
@@ -1713,8 +1731,8 @@ function dispose3d(obj){ obj.traverse(o=>{ if(o.geometry) o.geometry.dispose(); 
 function mount3dBear(){
   const host = document.getElementById('bearmount'); if(!host) return;
   if(!ensure3d() || !gl3) return;
-  const m = host.dataset.mood;
-  if(gl3.mood !== m){ if(gl3.bear){ gl3.scene.remove(gl3.bear); dispose3d(gl3.bear); } gl3.bear = build3dBear(m); gl3.scene.add(gl3.bear); gl3.mood = m; gl3.hop = 0; }
+  const m = host.dataset.mood, sev = +host.dataset.sev || 0, key = m+':'+sev;
+  if(gl3.mood !== key){ if(gl3.bear){ gl3.scene.remove(gl3.bear); dispose3d(gl3.bear); } gl3.bear = build3dBear(m,sev); gl3.scene.add(gl3.bear); gl3.mood = key; gl3.hop = 0; }
   host.innerHTML = ''; host.appendChild(gl3.renderer.domElement);
   if(!gl3.raf) gl3.raf = requestAnimationFrame(tick3d);
 }
@@ -1728,7 +1746,7 @@ function tick3d(now){
   // Atmen und Wippen
   const calm = reduce ? 0 : 1; b.position.y = Math.sin(t*1.8)*0.04*calm; P.body.scale.y = 1.12 + Math.sin(t*1.8)*0.012*calm;
   // Kopf folgt dem Finger/Mauszeiger
-  const tx = L.droop ? 0.28 : L.tilt ? 0.12 : 0, tz = L.tilt ? 0.28 : 0;
+  const tx = (L.droop ? 0.28 : L.tilt ? 0.12 : 0) + (L.sev ? Math.min(L.sev,6)*0.035 : 0), tz = L.tilt ? 0.28 : 0;
   head.rotation.y += ((gl3.look.x*0.55*(L.tilt?0:1)) - head.rotation.y)*0.12; head.rotation.x += ((tx + gl3.look.y*0.25*(L.droop||L.tilt?0:1)) - head.rotation.x)*0.12; head.rotation.z += (tz - head.rotation.z)*0.1;
   // Blinzeln
   if(P.eyes.length){ const k = (t > gl3.blinkAt && t < gl3.blinkAt+0.14) ? 0.1 : 1; P.eyes.forEach(e=>e.scale.y = 0.11*k); if(t > gl3.blinkAt+0.14) gl3.blinkAt = t + 2.5 + Math.random()*3; }
@@ -1742,7 +1760,7 @@ function tick3d(now){
   if(P.drop){ const k = (t*0.7)%1; P.drop.position.y = 0.42 - k*0.8; P.drop.position.x = 0.05+Math.sin(t*0.7)*0.0; P.drop.visible = k>0.05; }
   // Extras
   P.extras.forEach(sp=>{ const a = t*1.4 + sp.userData.i*2.1; sp.position.set(Math.cos(a)*1.5, 1.2+Math.sin(a*1.3)*0.35+0.7, Math.sin(a)*0.8); sp.rotation.y = t*2; sp.rotation.x = t*1.3; });
-  if(P.sweat){ const k = (t*0.6)%1; P.sweat.position.set(0.95,1.25-k*0.55,0.35); P.sweat.traverse(o=>{ if(o.material) o.material.opacity = 0.85*(1-k*k); }); }
+  if(P.sweat){ const k = (t*(0.6+0.12*(L.sev||0)))%1; P.sweat.position.set(0.95,1.25-k*0.55,0.35); P.sweat.traverse(o=>{ if(o.material) o.material.opacity = 0.85*(1-k*k); }); }
   if(P.tear){ const k = (t*0.5)%1; P.tear.position.y = 0.05-k*0.45; P.tear.material.opacity = 0.9*(1-k); }
   if(P.zs){ P.zs.forEach((s,i)=>{ const k = ((t*0.35)+i*0.33)%1; s.position.set(1.0+i*0.2+k*0.3, 1.5+k*1.1, 0.2); s.material.opacity = Math.sin(k*Math.PI); }); }
   if(P.pot) P.pot.rotation.z = Math.sin(t*1.8)*0.03;
