@@ -36,14 +36,17 @@ body{margin:0;color:var(--text);font:17.5px/1.4 var(--ui);padding-bottom:96px;mi
 .scene{background:#CFE4E6;overflow:hidden}
 .scene>div{position:absolute;inset:0}
 .sc-bg,.sc-fg{background:center top/cover no-repeat;will-change:transform;transform:scale(1.08)}
-.flyer{display:none;position:fixed;left:0;top:11%;z-index:8;pointer-events:none;animation:flyacross 52s linear infinite}
+.flyer{display:none;position:fixed;left:0;top:16%;z-index:8;pointer-events:none}
 body[data-page=cal] .flyer{display:block}
-.fly-in{position:relative;width:230px;height:330px;transform-origin:40px 40px;filter:drop-shadow(0 6px 6px rgba(40,50,60,.22))}
+.flyer.top{position:absolute;top:6px}
+body[data-page=cal] .flyer.top + main{padding-top:calc(20px + var(--flytop,0px))}
+@media (min-width:1000px){
+  body[data-page=cal] main{max-width:720px;margin:0 24px 0 auto}   /* Platz links für den Bär */
+}
+.fly-in{position:relative;width:230px;height:330px;transform-origin:0 0;filter:drop-shadow(0 6px 6px rgba(40,50,60,.22));animation:flyfloat 8s ease-in-out infinite}
 .flycanvas{display:block;width:230px;height:330px}
-@keyframes flyacross{0%{transform:translateX(-24vw)}100%{transform:translateX(112vw)}}
-@media (min-width:900px){.fly-in{scale:1.3}.flyer{top:14%}}
-@media (max-width:700px){.flyer{top:6%}.fly-in{scale:.62}}
-@media (prefers-reduced-motion:reduce){.flyer{animation:none;left:auto;right:6%}}
+@keyframes flyfloat{0%,100%{transform:translateY(-16px)}50%{transform:translateY(16px)}}
+@media (prefers-reduced-motion:reduce){.fly-in{animation:none}}
 .sc-bg{opacity:0;transition:opacity .7s}.sc-bg.in{opacity:1}
 .sc-fg{transition:opacity .7s;opacity:0}
 .sc-cloud{position:absolute;left:0;border-radius:50%;background:radial-gradient(ellipse at center,rgba(255,255,255,.7),rgba(255,255,255,0) 70%);filter:blur(5px);animation:scdrift linear infinite;opacity:.8}
@@ -521,7 +524,23 @@ function firstImage(urls, found, none){
 }
 /* Fliegender Lern Bär am Ballon (nur Kalender): derselbe 3D-Bär wie auf Heute, hält mit einer Hand die Ballonschnur */
 let fly3 = null;
+/* Der Bär schwebt links neben dem Kalender (nur breite Bildschirme, ab 1000 px; dort macht die Kalenderseite Platz) */
+function layoutFlyer(){
+  const fl = document.getElementById('flyer'), host = document.getElementById('flyhost'); if(!fl || !host) return;
+  const w = window.innerWidth;
+  if(w >= 1000){                                                       // breit: links neben dem Kalender
+    const space = w - 744, s = Math.max(0.5, Math.min(1.25, space/250));
+    fl.classList.remove('top'); document.body.style.removeProperty('--flytop');
+    host.style.scale = s.toFixed(3); fl.style.left = Math.max(0,(space - 230*s)/2).toFixed(0)+'px';
+  } else {                                                             // schmal (Handy, iPad hochkant): oben in der Titelzeile, scrollt mit
+    const s = Math.max(0.36, Math.min(0.55, w/900));
+    fl.classList.add('top'); document.body.style.setProperty('--flytop', Math.round(330*s-70)+'px');
+    host.style.scale = s.toFixed(3); fl.style.left = Math.round(w/2 - 115*s)+'px';
+  }
+}
+window.addEventListener('resize', layoutFlyer);
 function ensureFlyer(){
+  layoutFlyer();
   if(fly3){ if(!fly3.raf) fly3.raf = requestAnimationFrame(tickFly); return; }
   if(!ensure3d() || !gl3) return;                                             // three.js wird erst geladen; danach ruft ensure3d mountFlyer() auf
   mountFlyer();
@@ -544,7 +563,7 @@ function tickFly(now){
   if(!fly3) return;
   if(document.visibilityState!=='visible' || page!=='cal'){ fly3.raf = 0; return; }
   const T = THREE, b = fly3.bear, P = b.userData.parts, t = (now - fly3.t0)/1000, calm = reducedMotion() ? 0 : 1;
-  b.rotation.y = 0.5 + Math.sin(t*0.8)*0.12*calm; b.rotation.z = Math.sin(t*1.1)*0.05*calm; b.position.y = Math.sin(t*1.5)*0.14*calm;
+  b.rotation.y = 0.5 + Math.sin(t*0.8)*0.12*calm; b.rotation.z = Math.sin(t*0.8)*0.05*calm; b.position.y = Math.sin(t*0.8+0.5)*0.22*calm;
   const wsm = 0;                                                                   // Winken ist abgeschaltet (wsm = 0)
   const look = (Math.sin(t*0.75)*0.6 + Math.sin(t*1.9+1)*0.18)*calm;               // schaut hin und her
   P.head.rotation.y = 0.18*(1-wsm) + look*(1-wsm) - 0.15*wsm; P.head.rotation.x = (Math.sin(t*0.55+1)*0.2 + Math.sin(t*1.4)*0.06)*calm*(1-wsm); P.head.rotation.z = Math.sin(t*0.9)*0.07*calm;
@@ -553,7 +572,7 @@ function tickFly(now){
   P.armL.rotation.set(0.15*(1-wsm), 0, (-0.55+Math.sin(t*1.3)*0.1*calm)*(1-wsm) + (-2.35 - Math.sin(t*9)*0.38)*wsm);   // anderer Arm: lässig, oder winkt
   if(P.eyes.length){ const k = (t > fly3.blinkAt && t < fly3.blinkAt+0.14) ? 0.1 : 1; P.eyes.forEach(e=>e.scale.y = 0.11*k); if(t > fly3.blinkAt+0.14) fly3.blinkAt = t + 2.5 + Math.random()*3; }
   // Ballon schaukelt, Schnur läuft von seinem Knoten zur Hand
-  const bal = P.balloon; bal.position.set(1.75+Math.sin(t*0.9)*0.12*calm, 4.55+Math.sin(t*1.5+0.6)*0.14*calm, 0.2); bal.rotation.z = Math.sin(t*0.9)*0.08*calm;
+  const bal = P.balloon; bal.position.set(1.75+Math.sin(t*0.6)*0.1*calm, 4.55+Math.sin(t*0.8)*0.38*calm, 0.2); bal.rotation.z = Math.sin(t*0.6)*0.07*calm;
   b.updateMatrixWorld(true);
   const a = bal.localToWorld(new T.Vector3(0,-1.55,0)), h = P.armR.localToWorld(new T.Vector3(0.1,-0.8,0.14));
   b.worldToLocal(a); b.worldToLocal(h);
