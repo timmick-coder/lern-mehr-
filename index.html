@@ -526,9 +526,9 @@ function layoutFlyer(){
   const fl = document.getElementById('flyer'), host = document.getElementById('flyhost'); if(!fl || !host) return;
   const w = window.innerWidth;
   if(w >= 1120){                                                       // breit (iPad quer): im freien Rand links neben dem Kalender, der bleibt mittig
-    const space = (w - 860)/2, s = Math.max(0.45, Math.min(1.1, space/235));
+    const space = (w - 860)/2, s = Math.max(0.5, Math.min(1.15, space/168));     // das Bild hat ~35 px leeren Rand, deshalb passt er größer in den Rand
     fl.classList.remove('top'); document.body.style.removeProperty('--flytop');
-    host.style.scale = s.toFixed(3); fl.style.left = Math.max(0,(space - 230*s)/2).toFixed(0)+'px';
+    host.style.scale = s.toFixed(3); fl.style.left = ((space - 230*s)/2).toFixed(0)+'px';
   } else {                                                             // schmal (Handy, iPad hochkant): oben in der Titelzeile, scrollt mit
     const s = Math.max(0.36, Math.min(0.55, w/900));
     fl.classList.add('top'); document.body.style.setProperty('--flytop', Math.round(330*s-70)+'px');
