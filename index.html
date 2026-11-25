@@ -40,9 +40,6 @@ body{margin:0;color:var(--text);font:17.5px/1.4 var(--ui);padding-bottom:96px;mi
 body[data-page=cal] .flyer{display:block}
 .flyer.top{position:absolute;top:6px}
 body[data-page=cal] .flyer.top + main{padding-top:calc(20px + var(--flytop,0px))}
-@media (min-width:1000px){
-  body[data-page=cal] main{max-width:720px;margin:0 24px 0 auto}   /* Platz links für den Bär */
-}
 .fly-in{position:relative;width:230px;height:330px;transform-origin:0 0;filter:drop-shadow(0 6px 6px rgba(40,50,60,.22));animation:flyfloat 8s ease-in-out infinite}
 .flycanvas{display:block;width:230px;height:330px}
 @keyframes flyfloat{0%,100%{transform:translateY(-16px)}50%{transform:translateY(16px)}}
@@ -528,8 +525,8 @@ let fly3 = null;
 function layoutFlyer(){
   const fl = document.getElementById('flyer'), host = document.getElementById('flyhost'); if(!fl || !host) return;
   const w = window.innerWidth;
-  if(w >= 1000){                                                       // breit: links neben dem Kalender
-    const space = w - 744, s = Math.max(0.5, Math.min(1.25, space/250));
+  if(w >= 1120){                                                       // breit (iPad quer): im freien Rand links neben dem Kalender, der bleibt mittig
+    const space = (w - 860)/2, s = Math.max(0.45, Math.min(1.1, space/235));
     fl.classList.remove('top'); document.body.style.removeProperty('--flytop');
     host.style.scale = s.toFixed(3); fl.style.left = Math.max(0,(space - 230*s)/2).toFixed(0)+'px';
   } else {                                                             // schmal (Handy, iPad hochkant): oben in der Titelzeile, scrollt mit
