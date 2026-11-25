@@ -1459,14 +1459,14 @@ document.addEventListener('contextmenu', e=>{ if(tg && tg.active) e.preventDefau
 
 /* ---------- Lern Bär: zeigt, wie gut du im Plan bist ---------- */
 const BEAR_LINES = {
-  start:['Hallo! Ich bin dein Lern Bär. Leg ein Fach an, dann lerne ich mit dir.','Bereit, wenn du es bist!'],
-  stolz:['Wow, du bist voll im Plan! Ich bin so stolz auf dich.','Läuft bei dir! Weiter so.','Du bist heute richtig gut. Gönn dir was Schönes!'],
-  froh:['Alles im grünen Bereich. Packen wir es an!','Heute schaffen wir das zusammen.','Ich freue mich aufs Lernen mit dir!'],
-  okay:['Ein bisschen Rückstand, das holst du locker auf.','Kleiner Rückstand, kein Problem. Fang mit dem ersten Thema an.'],
-  besorgt:['Hm, da hat sich etwas angesammelt. Ein Thema nach dem anderen, ja?','Ich mache mir ein bisschen Sorgen. Fang einfach mit einem Thema an.'],
-  traurig:['Ich vermisse unsere Lernzeit … Lass uns zusammen aufholen.','Es ist viel liegen geblieben, aber wir schaffen das. Fang ganz klein an.'],
-  schlaf:['Heute ist lernfrei. Ich mache ein Nickerchen.','Zzz … Erhol dich gut!'],
-  pruefung:['Heute ist Prüfung! Du hast so viel gelernt, du schaffst das.','Ich drücke dir die Tatze!']
+  start:['Hallo! Ich bin dein Lern Bär. Leg ein Fach an, dann lerne ich mit dir.','Bereit, wenn du es bist!','Brumm! Wollen wir zusammen einen Plan machen?','Erst ein Fach, dann ein Prüfungsdatum – den Rest übernehme ich.','Ich habe schon meinen Rucksack gepackt. Und du?'],
+  stolz:['Wow, du bist voll im Plan! Ich bin so stolz auf dich.','Läuft bei dir! Weiter so.','Du bist heute richtig gut. Gönn dir was Schönes!','Das war stark! Ich glaube, du hast dir einen Keks verdient.','Ich bin ganz kribbelig vor Stolz auf dich.','Du machst das wirklich großartig. Genieß das gute Gefühl!','So fühlt sich Fortschritt an. Weiter so!','Du bist ein Lernprofi. Ich sag es nur ungern, aber du bist besser als ich.'],
+  froh:['Alles im grünen Bereich. Packen wir es an!','Heute schaffen wir das zusammen.','Ich freue mich aufs Lernen mit dir!','Ein Thema nach dem anderen, dann wird es ein guter Tag.','Los geht es! Ich halte dir die Daumen. Na ja, die Tatzen.','Du bist gut im Plan. Das ist ein schönes Gefühl, oder?','Kleine Schritte, große Wirkung. Starte einfach mit dem ersten Thema.','Ich hab Honig und gute Laune dabei. Fang an, ich bin da!','Heute ist ein guter Tag zum Lernen.','Zusammen sind wir ein starkes Team!'],
+  okay:['Ein bisschen Rückstand, das holst du locker auf.','Kleiner Rückstand, kein Problem. Fang mit dem ersten Thema an.','Das bisschen holen wir schnell nach.'],
+  besorgt:['Hm, da hat sich etwas angesammelt. Ein Thema nach dem anderen, ja?','Ich mache mir ein bisschen Sorgen. Fang einfach mit einem Thema an.','Nicht schlimm, aber lass es nicht noch mehr werden. Ein Thema geht immer!','Jedes Thema, das du aufholst, macht mich ein Stück ruhiger.','Ich glaube an dich. Fang mit dem kleinsten Thema an.','Uff, da liegt noch was. Aber das schaffen wir, Schritt für Schritt.','Komm, wir holen das jetzt zusammen auf. Nur das erste Thema!','Kein Stress, aber heute wäre ein guter Tag zum Aufholen.'],
+  traurig:['Ich vermisse unsere Lernzeit … Lass uns zusammen aufholen.','Es ist viel liegen geblieben, aber wir schaffen das. Fang ganz klein an.','Ich bin nicht böse, nur ein bisschen traurig. Ein Thema würde mich schon aufmuntern.','Es ist nie zu spät. Nimm dir jetzt ein einziges Thema vor.','Lass uns den Berg in kleine Stücke teilen. Das erste Stück ist gleich da.','Ich warte auf dich. Wenn du anfängst, geht es mir sofort besser.','Auch nach einer Pause geht es weiter. Ich bin bei dir!','Jedes erledigte Thema ist ein Lichtblick. Fang mit einem an?'],
+  schlaf:['Heute ist lernfrei. Ich mache ein Nickerchen.','Zzz … Erhol dich gut!','Pause ist auch wichtig. Ich träume von Honig.','Schlaf schön und lass das Lernen heute ruhen.','Zzz … Morgen sind wir wieder fit.','Ausruhen gehört dazu. Ich bleibe einfach liegen.'],
+  pruefung:['Heute ist Prüfung! Du hast so viel gelernt, du schaffst das.','Ich drücke dir die Tatze!','Tief durchatmen. Du kennst mehr, als du denkst.','Lies die Aufgaben in Ruhe. Ich bin in Gedanken bei dir!','Du hast dich vorbereitet, jetzt zeig, was du kannst. Viel Erfolg!','Ich halte dir die Daumen, na ja, alle Tatzen. Du packst das!']
 };
 const BEAR_LOOK = {
   stolz:   {fur:'#BE7C4A', face:'happy',  mouth:'smile', cheeks:true, cap:true, sparkle:true},
@@ -1478,7 +1478,7 @@ const BEAR_LOOK = {
   pruefung:{fur:'#BE7C4A', face:'open',   mouth:'smile', cheeks:true, band:true},
   start:   {fur:'#BE7C4A', face:'open',   mouth:'smile', cheeks:true}
 };
-let bearIdx = 0;
+let bearIdx = Math.floor(Math.random()*100);       // jeder Start mit einem anderen Spruch
 
 function learnMood(plan){
   const today = todayIso(), fp = S.firstPlanned || {};
@@ -1571,8 +1571,21 @@ function bearTiltTick(now){
   tilt.raf = requestAnimationFrame(bearTiltTick);
 }
 
+/* Abends (ab 17 Uhr) und noch etwas offen: der Bär motiviert, statt den normalen Spruch zu sagen */
+function bearLinesFor(mood, hour = new Date().getHours()){
+  const n = mood.open || 0;
+  if(hour >= 17 && n > 0 && !['schlaf','pruefung','start'].includes(mood.m)){
+    if(hour >= 21) return n===1
+      ? ['Schon spät, aber ein einziges Thema schaffst du noch. Dann schläfst du mit gutem Gefühl!','Nur noch ein Thema – kurz durchziehen, dann hast du Feierabend!']
+      : [`Schon spät – such dir das leichteste von ${n} Themen aus und mach wenigstens eins. Das zählt!`,'Auch ein kleines Thema bringt dich weiter. Fang einfach an, ich bleib bei dir!'];
+    return n===1
+      ? ['Nur noch ein Thema, dann ist der Tag geschafft. Das packst du!','Ein einziges Thema fehlt noch. Komm, das geht noch heute!']
+      : [`Noch ${n} Themen heute – Schritt für Schritt, ich bin bei dir!`,'Der Abend ist noch jung. Fang einfach mit dem kleinsten Thema an!','Kleiner Endspurt, dann hast du dir den Feierabend verdient!'];
+  }
+  return BEAR_LINES[mood.m];
+}
 function bearCardHtml(plan){
-  const mood = learnMood(plan), lines = BEAR_LINES[mood.m], line = lines[bearIdx % lines.length];
+  const mood = learnMood(plan), lines = bearLinesFor(mood), line = lines[bearIdx % lines.length];
   const n = (k,one,many) => `${k} ${k===1?one:many}`;
   let facts = '';
   if(mood.m==='traurig' || mood.m==='besorgt' || mood.m==='okay') facts = `${n(mood.backlog,'Thema','Themen')} aus den letzten Tagen ${mood.backlog===1?'wartet':'warten'} noch.`;
@@ -1582,7 +1595,7 @@ function bearCardHtml(plan){
     <div class="bubble"><div class="small muted" style="margin-bottom:2px">Lern Bär</div><div id="bearmsg" style="font-weight:600">${esc(line)}</div>${facts?`<div class="small muted" style="margin-top:4px">${esc(facts)}</div>`:''}</div></div>`;
 }
 function bearTap(){
-  const plan = computePlan(), m = learnMood(plan).m, lines = BEAR_LINES[m]; bearIdx++;
+  const plan = computePlan(), lines = bearLinesFor(learnMood(plan)); bearIdx++;
   const el = document.getElementById('bearmsg'); if(el) el.textContent = lines[bearIdx % lines.length];
   const w = document.querySelector('.bearwrap'); if(w){ w.classList.remove('hop'); void w.offsetWidth; w.classList.add('hop'); }
   try{ navigator.vibrate && navigator.vibrate(10); }catch(e){}
