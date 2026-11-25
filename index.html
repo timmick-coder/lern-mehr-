@@ -33,7 +33,17 @@ html{background:#DDEEF3}
 body{margin:0;color:var(--text);font:17.5px/1.4 var(--ui);padding-bottom:96px;min-height:100vh;background:#CFE4E6}
 @media (prefers-color-scheme: dark){html{background:#1B2747}body{background:#1B2747}}
 .scene{position:fixed;inset:0;z-index:0;pointer-events:none}
-.scene{background:#CFE4E6 url(hintergrund.webp) center top/cover no-repeat}
+.scene{background:#CFE4E6;overflow:hidden}
+.scene>div{position:absolute;inset:0}
+.sc-bg,.sc-fg{background:center top/cover no-repeat;will-change:transform;transform:scale(1.08)}
+.sc-bg{opacity:0;transition:opacity .7s}.sc-bg.in{opacity:1}
+.sc-fg{transition:opacity .7s;opacity:0}
+.sc-cloud{position:absolute;left:0;border-radius:50%;background:radial-gradient(ellipse at center,rgba(255,255,255,.7),rgba(255,255,255,0) 70%);filter:blur(5px);animation:scdrift linear infinite;opacity:.8}
+@keyframes scdrift{0%{transform:translateX(-45vw)}100%{transform:translateX(135vw)}}
+.sc-leaf{position:absolute;top:-30px;width:12px;height:12px;border-radius:0 100% 0 100%;background:#8DB04E;opacity:.75;animation:scfall linear infinite}
+.sc-leaf.l2{background:#B7C45F}.sc-leaf.l3{background:#D9A441}
+@keyframes scfall{0%{transform:translate(0,-30px) rotate(0)}25%{transform:translate(30px,25vh) rotate(120deg)}50%{transform:translate(-10px,50vh) rotate(240deg)}75%{transform:translate(35px,75vh) rotate(330deg)}100%{transform:translate(0,105vh) rotate(450deg)}}
+@media (prefers-reduced-motion:reduce){.sc-cloud,.sc-leaf{animation:none}.sc-leaf{display:none}}
 @media (prefers-color-scheme: dark){.scene{filter:brightness(.42) saturate(.8) hue-rotate(8deg)}}
 main{max-width:860px;margin:0 auto;padding:20px 16px;position:relative;z-index:1}
 h1,h2{font-family:var(--head);color:var(--text);font-weight:400;letter-spacing:.01em}
@@ -233,7 +243,22 @@ main>h1,main>.muted,main>p.muted,main>div:first-child>.muted,main>div:first-chil
 </style>
 </head>
 <body>
-<div class="scene" aria-hidden="true"></div>
+<div class="scene" aria-hidden="true">
+  <div class="sc-bg" id="scbg"></div>
+  <div class="sc-clouds" style="pointer-events:none">
+    <i class="sc-cloud" style="top:9%;width:260px;height:70px;animation-duration:95s"></i>
+    <i class="sc-cloud" style="top:22%;width:340px;height:90px;animation-duration:140s;animation-delay:-60s"></i>
+    <i class="sc-cloud" style="top:36%;width:220px;height:60px;animation-duration:110s;animation-delay:-30s"></i>
+  </div>
+  <div class="sc-fg" id="scfg"></div>
+  <div class="sc-leaves" style="pointer-events:none">
+    <i class="sc-leaf" style="left:12%;animation-duration:19s;animation-delay:-3s"></i>
+    <i class="sc-leaf l2" style="left:34%;animation-duration:24s;animation-delay:-11s"></i>
+    <i class="sc-leaf l3" style="left:58%;animation-duration:21s;animation-delay:-7s"></i>
+    <i class="sc-leaf" style="left:78%;animation-duration:27s;animation-delay:-16s"></i>
+    <i class="sc-leaf l2" style="left:90%;animation-duration:22s;animation-delay:-1s"></i>
+  </div>
+</div>
 <main id="app"></main>
 <div id="modal"></div>
 <nav>
@@ -471,6 +496,39 @@ function computePlan(){
 /* ---------- Rendering ---------- */
 const app = document.getElementById('app');
 
+/* Hintergrund je Seite: hintergrund-heute|kalender|einstellungen.webp (sonst hintergrund.webp), optional vordergrund-<seite>.png als vordere Ebene.
+   Tiefe: Ebenen bewegen sich beim Scrollen und mit dem Mauszeiger unterschiedlich weit; Wolken und Blätter treiben darüber. */
+const SCENE_FILE = {today:'heute', cal:'kalender', set:'einstellungen'};
+let sceneKey = null, scPx = 0, scPy = 0, scRaf = 0;
+/* Größen: Handy = Name ohne Zusatz, iPad hochkant = "-ipad", iPad quer = "-ipad-quer". Fehlt eine Variante, greift die nächst passende. */
+function sceneVariants(){
+  const w = window.innerWidth, h = window.innerHeight;
+  if(w < 700) return [''];
+  return h > w ? ['-ipad',''] : ['-ipad-quer','-ipad',''];
+}
+function firstImage(urls, found, none){
+  const next = i => { if(i>=urls.length){ none && none(); return; } const im = new Image(); im.onload = ()=>found(urls[i]); im.onerror = ()=>next(i+1); im.src = urls[i]; };
+  next(0);
+}
+function updateScene(){
+  const key = SCENE_FILE[page] || 'heute', vs = sceneVariants(), id = key+vs.join();
+  if(id===sceneKey) return;
+  const bg = document.getElementById('scbg'), fg = document.getElementById('scfg'); if(!bg || !fg) return; sceneKey = id;
+  const show = url => { if(sceneKey!==id) return; bg.classList.remove('in'); bg.style.backgroundImage = `url(${url})`; void bg.offsetWidth; bg.classList.add('in'); };
+  firstImage([...vs.map(v=>`hintergrund-${key}${v}.webp`), ...vs.map(v=>`hintergrund${v}.webp`), 'hintergrund.webp'], show);
+  firstImage(vs.map(v=>`vordergrund-${key}${v}.png`), url=>{ if(sceneKey!==id) return; fg.style.backgroundImage = `url(${url})`; fg.style.opacity = 1; }, ()=>{ fg.style.opacity = 0; });
+}
+window.addEventListener('resize', ()=>{ clearTimeout(window.__scT); window.__scT = setTimeout(updateScene, 250); });
+function sceneParallax(){
+  scRaf = 0; const bg = document.getElementById('scbg'), fg = document.getElementById('scfg'); if(!bg || reducedMotion()) return;
+  const sy = Math.min(window.scrollY*0.04,24), sy2 = Math.min(window.scrollY*0.1,60);
+  bg.style.transform = `translate3d(${(-scPx*14).toFixed(1)}px,${(-scPy*10 - sy).toFixed(1)}px,0) scale(1.08)`;
+  fg.style.transform = `translate3d(${(-scPx*38).toFixed(1)}px,${(-scPy*22 - sy2).toFixed(1)}px,0) scale(1.12)`;
+}
+const sceneKick = () => { if(!scRaf) scRaf = requestAnimationFrame(sceneParallax); };
+window.addEventListener('scroll', sceneKick, {passive:true});
+window.addEventListener('pointermove', e=>{ scPx = e.clientX/window.innerWidth-0.5; scPy = e.clientY/window.innerHeight-0.5; sceneKick(); }, {passive:true});
+
 let lastPage = null;
 function render(){
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.p===page));
@@ -480,6 +538,7 @@ function render(){
   renderModal();
   window.scrollTo(0, samePage ? keepY : 0);          // gleiche Seite neu zeichnen: Position behalten, beim Seitenwechsel nach oben
   lastPage = page;
+  updateScene();
   if(page==='today') mount3dBear();                  // flachen Bär durch den 3D-Bär ersetzen (falls WebGL da ist)
   if(celebrate){ const k = celebrate; celebrate = null; requestAnimationFrame(()=>cheer(k)); }
 }
