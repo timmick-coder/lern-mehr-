@@ -215,6 +215,9 @@ body{padding-bottom:104px}
 .bearimg{display:block;width:118px;max-width:30vw;height:auto;-webkit-user-select:none;user-select:none}
 .bear3d{transform-origin:50% 88%;will-change:transform;mix-blend-mode:multiply}
 .bearshadow{position:absolute;left:50%;bottom:4px;width:84px;height:12px;margin-left:-42px;border-radius:50%;background:radial-gradient(ellipse at center,rgba(60,40,20,.38),rgba(60,40,20,0) 70%)}
+.topics.tgmode .topic{-webkit-user-select:none;user-select:none}
+.topics.tgmode .topic input{pointer-events:none}
+.topic.tgsrc{background:color-mix(in srgb,var(--accent) 22%,var(--card));border-radius:14px;box-shadow:0 6px 16px -4px rgba(60,40,20,.45);transform:scale(1.02);position:relative;z-index:2;outline:2px solid var(--accent)}
 .bearimg.fx-okay{filter:saturate(.88)}
 .bearimg.fx-besorgt{filter:saturate(.7) brightness(.97)}
 .bearimg.fx-traurig{filter:grayscale(.7) brightness(.93)}
@@ -638,7 +641,8 @@ function viewSettings(){
       </div>
       <details class="topics" data-s="${sub.id}" ${openTopics.has(sub.id)?'open':''} ontoggle="toggleTopics(this)">
         <summary>Themen (${ts.length}) ›</summary>
-        ${ts.map(t=>`<div class="topic"><input value="${esc(t.name)}" onchange="editTopic('${t.id}','name',this.value)">
+        ${ts.length>1?'<p class="small muted" style="margin:0 0 6px">Reihenfolge ändern: Thema gedrückt halten und hoch oder runter schieben.</p>':''}
+        ${ts.map(t=>`<div class="topic" data-t="${t.id}"><input value="${esc(t.name)}" onchange="editTopic('${t.id}','name',this.value)">
           <button class="btn danger" onclick="delTopic('${t.id}')" aria-label="Löschen">✕</button></div>`).join('') || '<p class="muted small">Noch keine Themen in diesem Fach.</p>'}
         <button class="btn primary" style="margin-top:6px" onclick="openWizard('${sub.id}')">＋ Themen hinzufügen</button>
       </details>
@@ -1260,6 +1264,56 @@ document.addEventListener('mousedown', e=>{ if(e.button===0 && Date.now()-lastTo
 document.addEventListener('mousemove', e=>dgMove(e.clientX,e.clientY,e));
 document.addEventListener('mouseup', e=>{ if(Date.now()-lastTouchAt>800) dgEnd(e.clientX,e.clientY,false); });
 document.addEventListener('contextmenu', e=>{ if(dg && dg.active) e.preventDefault(); });
+
+/* ---------- Einstellungen: Thema gedrückt halten und hoch/runter schieben = Reihenfolge ändern ---------- */
+let tg = null, tgSuppress = false;
+function tgStart(target,x,y){
+  if(page!=='set' || tg) return;
+  const row = target && target.closest && target.closest('.topic[data-t]'); if(!row || target.closest('button')) return;
+  const box = row.closest('details.topics'); if(!box || box.querySelectorAll('.topic[data-t]').length<2) return;
+  const wait = target.closest('.grip') ? 120 : 380;
+  tg = { row, box, x0:x, y0:y, y, active:false, timer:setTimeout(tgActivate, wait) };
+}
+function tgActivate(){
+  if(!tg) return; tg.active = true;
+  try{ navigator.vibrate && navigator.vibrate(15); }catch(e){}
+  try{ document.activeElement && document.activeElement.blur(); window.getSelection().removeAllRanges(); }catch(e){}
+  tg.row.classList.add('tgsrc'); tg.box.classList.add('tgmode');
+}
+function tgMove(x,y,e){
+  if(!tg) return; tg.y = y;
+  if(!tg.active){ if(Math.hypot(x-tg.x0,y-tg.y0) > 10){ clearTimeout(tg.timer); tg = null; } return; }   // früh bewegt: normales Scrollen
+  if(e && e.cancelable) e.preventDefault();
+  if(y < 70) window.scrollBy(0,-12); else if(y > window.innerHeight-130) window.scrollBy(0,12);          // am Rand automatisch scrollen
+  const el = document.elementFromPoint(x,y), over = el && el.closest && el.closest('.topic[data-t]');
+  if(over && over!==tg.row && over.parentNode===tg.row.parentNode){
+    const r = over.getBoundingClientRect(), after = tg.row.compareDocumentPosition(over) & Node.DOCUMENT_POSITION_FOLLOWING;
+    if(after && y > r.top + r.height*0.4) over.after(tg.row); else if(!after && y < r.bottom - r.height*0.4) over.before(tg.row);
+  }
+}
+function tgEnd(cancelled){
+  if(!tg) return; clearTimeout(tg.timer); const d = tg; tg = null;
+  if(!d.active) return;
+  d.row.classList.remove('tgsrc'); d.box.classList.remove('tgmode');
+  tgSuppress = true; setTimeout(()=>{ tgSuppress = false; }, 120);                                          // Loslassen soll nichts anklicken
+  if(cancelled){ render(); return; }
+  const ids = [...d.box.querySelectorAll('.topic[data-t]')].map(r=>r.dataset.t), sid = (S.topics.find(t=>t.id===ids[0])||{}).subjectId;
+  const slots = []; S.topics.forEach((t,i)=>{ if(t.subjectId===sid) slots.push(i); });
+  const byId = Object.fromEntries(S.topics.map(t=>[t.id,t])); if(slots.length!==ids.length || ids.some(i=>!byId[i])){ render(); return; }
+  const before = slots.map(i=>S.topics[i].id).join();
+  if(before === ids.join()) return;
+  ids.forEach((id,k)=>{ S.topics[slots[k]] = byId[id]; });
+  save(true); render(); toast('Reihenfolge geändert – der Plan passt sich an');
+}
+document.addEventListener('touchstart', e=>{ if(e.touches.length===1) tgStart(e.target,e.touches[0].clientX,e.touches[0].clientY); else if(tg){ clearTimeout(tg.timer); tg = null; } }, {passive:true});
+document.addEventListener('touchmove', e=>{ const t = e.touches[0]; if(t) tgMove(t.clientX,t.clientY,e); }, {passive:false});
+document.addEventListener('touchend', ()=>tgEnd(false));
+document.addEventListener('touchcancel', ()=>tgEnd(true));
+document.addEventListener('mousedown', e=>{ if(e.button===0 && Date.now()-lastTouchAt>800) tgStart(e.target,e.clientX,e.clientY); });
+document.addEventListener('mousemove', e=>tgMove(e.clientX,e.clientY,e));
+document.addEventListener('mouseup', ()=>{ if(Date.now()-lastTouchAt>800) tgEnd(false); });
+document.addEventListener('click', e=>{ if(tgSuppress){ e.stopPropagation(); e.preventDefault(); } }, true);
+document.addEventListener('contextmenu', e=>{ if(tg && tg.active) e.preventDefault(); });
 
 /* ---------- Lern Bär: zeigt, wie gut du im Plan bist ---------- */
 const BEAR_LINES = {
