@@ -252,8 +252,6 @@ main>h1,main>.muted,main>p.muted,main>div:first-child>.muted,main>div:first-chil
 /* iPad/iPhone als App vom Home-Bildschirm: die Seite läuft bis ganz nach oben unter die Statusleiste (kein weißer Rand), Inhalt rückt um den Sicherheitsabstand nach unten */
 main{padding-top:calc(20px + env(safe-area-inset-top,0px))}
 .flyer.top{top:calc(6px + env(safe-area-inset-top,0px))}
-.scene::before{content:'';position:absolute;left:0;right:0;top:0;height:calc(70px + env(safe-area-inset-top,0px));z-index:2;pointer-events:none;
-  background:linear-gradient(180deg,rgba(30,40,50,.28),rgba(30,40,50,0))}      /* damit die weiße Uhr der Statusleiste auch auf hellem Himmel lesbar bleibt */
 /* Dunkelmodus "Lampenlicht am Abend": warme braune Karten wie Holz und Pergament im Kerzenschein, Hintergrund bleibt gemalt, nur ins Dämmerlicht getaucht */
 @media (prefers-color-scheme: dark){
   :root{ --bg:#251F18; --card:#30281F; --text:#F8EDD6; --muted:#C4B294; --line:rgba(255,206,140,.24);
